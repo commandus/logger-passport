@@ -1,5 +1,8 @@
+#ifndef ERRLIST_H
+#define ERRLIST_H     1
+
 // Error codes
-#define LOGGER_HUFFMAN_OK  						0
+#define LOGGER_PASSPORT_OK 						0
 #define	ERR_LIST_COUNT							9
 #define ERR_LOGGER_PASSPORT_SEGMENTATION_FAULT	-710
 #define ERR_LOGGER_PASSPORT_ABRT           		-711
@@ -15,3 +18,9 @@
 #define ERR_DEBUG								"Info "
 #define ERR_WARNING								"Warning "
 #define ERR_UNKNOWN_ERROR_CODE					"Unknown error code "
+
+const char *strerror_logger_passport(
+	int errCode
+);
+
+#endif

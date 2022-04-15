@@ -226,7 +226,7 @@ class ds18b20_param     //надо создавать для каждого!
 
 class ds18b20_plume
 {
-    std::string Name;         //имя косы
+    std::string Name;         // имя косы
     std::vector<ds18b20_param> param;
 
     ds18b20_plume();
