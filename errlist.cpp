@@ -1,7 +1,9 @@
 #include <sstream>
 #include "errlist.h"
 
-static const char *error_list_en[ERR_LIST_COUNT] = 
+static const char *unknown_error_en = "Unknown error";
+
+static const char *error_list_en[ERR_LIST_COUNT] =
 {
 	"Segmentation fault",
 	"Program aborted",
@@ -20,9 +22,7 @@ const char *strerror_logger_passport(
 {
 	int idx = (- errCode) - 710;
 	if (idx < 0 || idx >= ERR_LIST_COUNT) {
-		std::stringstream ss;
-		ss << ERR_UNKNOWN_ERROR_CODE << errCode;
-		return ss.str().c_str();
+		return unknown_error_en;
 	}
 	return error_list_en[idx];
 }

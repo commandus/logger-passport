@@ -1,9 +1,112 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <iomanip>
 
 #include "logger-passport-collection.h"
 #include "list-file.h"
+
+// -------- SensorMAC --------
+
+SensorMAC::SensorMAC()
+{
+
+}
+
+SensorMAC::SensorMAC(const SensorMAC &value)
+        : mac(value.mac)
+{
+
+}
+
+SensorMAC::SensorMAC(const std::string &value)
+{
+    set(value);
+}
+
+std::string SensorMAC::toString() const
+{
+    std::stringstream ss;
+    ss << std::hex << std::setfill('0') << std::setw(16) << mac.u;
+    return ss.str();
+}
+
+std::string SensorMAC::toJsonString() const
+{
+    return toString();
+}
+
+std::string SensorMAC::toTableString() const
+{
+    return toString();
+}
+
+std::string SensorMAC::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
+{
+    return toString();
+}
+
+void SensorMAC::set(const std::string &value)
+{
+    std::stringstream ss(value);
+    ss >> std::hex >> mac.u;
+}
+
+SensorMAC &SensorMAC::operator=(uint64_t value)
+{
+    mac.u = value;
+    return *this;
+}
+
+SensorMAC &SensorMAC::operator=(const SensorMAC &value)
+{
+    mac.u = value.mac.u;
+    return *this;
+}
+
+SensorMAC &SensorMAC::operator=(const std::string &value)
+{
+    set(value);
+    return *this;
+}
+
+// -------- LoggerPlumeId --------
+
+std::string SensorCoefficients::toString() const
+{
+    std::stringstream ss;
+    ss << mac.toString() << " ";
+    for (auto it(coefficents.begin()); it != coefficents.end(); it++) {
+        ss << std::fixed << std::setprecision(10) << *it << " ";
+    }
+    return ss.str();
+}
+
+std::string SensorCoefficients::toJsonString() const
+{
+    std::stringstream ss;
+    ss << "{\"mac\": \"" << mac.toString() << "\", \"coefficients\": [";
+    bool isFirst = true;
+    for (auto it(coefficents.begin()); it != coefficents.end(); it++) {
+        if (isFirst)
+            isFirst = false;
+        else
+            ss << ", ";
+        ss << std::fixed << std::setprecision(10) << *it;
+    }
+    ss << "]}";
+    return ss.str();
+}
+
+std::string SensorCoefficients::toTableString() const
+{
+    return toString();
+}
+
+std::string SensorCoefficients::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
+{
+    return toString();
+}
 
 // -------- LoggerPlumeId --------
 
@@ -37,8 +140,9 @@ LoggerPlumeId& LoggerPlumeId::operator=(
 	return *this;
 }
 
-bool LoggerPlumeId::operator<(const LoggerPlumeId &another) const 
+bool LoggerPlumeId::operator<(const LoggerPlumeId &another) const
 {
+    // std::cerr << toJsonString() << " < " << another.toJsonString()<< std::endl;
 	if (plume < another.plume)
 		return true;
 	if (plume > another.plume)
@@ -65,7 +169,7 @@ std::string LoggerPlumeId::toJsonString() const
 	std::stringstream ss;
 	ss << "{" 
 		<< "\"plume\": " << plume
-		<< "\"year\": " << year		
+		<< ", \"year\": " << year
 		<< "}";
 	return ss.str();
 }
@@ -89,16 +193,17 @@ std::string LoggerPlumeId::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) c
 
 // -------- LoggerPassportItem --------
 
+const static std::string noname;
 
 LoggerPassportItem::LoggerPassportItem()
-	: modificationTime(0)
+	: modificationTime(0), name(noname)
 {
 }
 
 LoggerPassportItem::LoggerPassportItem(
 	const LoggerPassportItem& value
 )
-	: modificationTime(value.modificationTime), id(value.id)
+	: modificationTime(value.modificationTime), id(value.id), name(value.name)
 {
 
 }
@@ -106,7 +211,7 @@ LoggerPassportItem::LoggerPassportItem(
 LoggerPassportItem::LoggerPassportItem(
 	time_t amodificationTime
 )
-	: modificationTime(amodificationTime)
+	: modificationTime(amodificationTime), name(noname)
 {
 
 }
@@ -121,7 +226,9 @@ std::string LoggerPassportItem::toJsonString() const
 	std::stringstream ss;
 	ss << "{" 
 		<< "\"modified\": " << modificationTime
-		<< ", \"id\": " << id.toJsonString()
+        << ", \"name\": \"" << name
+		<< "\", \"id\": " << id.toJsonString()
+        << ", \"plume\": " << this->plume.toJsonString()
 		<< "}";
 	return ss.str();
 }
@@ -185,12 +292,14 @@ static int plume1 = 0;
 
 int LoggerPassportCollection::loadStream(
 	time_t modificationTime,
+    const std::string &name, ///< optional resource name
 	const std::istream &strm
 )
 {
 	LoggerPassportItem it;
 	it.modificationTime = modificationTime;
 	it.id.plume = plume1;
+    it.name = name;     // optional resource name
 	plume1++;
 	it.id.year = 2022;
 	push(it);
@@ -202,7 +311,7 @@ int LoggerPassportCollection::loadString(
 )
 {
 	std::stringstream ss(value);
-	return loadStream(modificationTime, ss);
+	return loadStream(modificationTime, noname, ss);
 }
 
 int LoggerPassportCollection::loadFile(
@@ -217,7 +326,7 @@ int LoggerPassportCollection::loadFile(
 		return loadFiles(fileNames, fileSuffix);
 	}
 	std::ifstream f(fileName, std::ios::in);
-	int r = loadStream(m, f);
+	int r = loadStream(m, fileName, f);
 	f.close();
 	return r;
 }

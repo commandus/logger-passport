@@ -4,7 +4,7 @@
 #include <string>
 #include <istream>
 #include <vector>
-#include <inttypes.h>
+#include <cinttypes>
 
 /**
  * Initialize logger password directory

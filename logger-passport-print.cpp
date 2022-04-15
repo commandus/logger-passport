@@ -9,15 +9,13 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
-#include <sstream>
 
 #include "argtable3/argtable3.h"
 
-#include "logger-passport.h"
 #include "logger-passport-collection.h"
 #include "errlist.h"
 
-const std::string programName = "logger-passport-print";
+const static std::string programName = "logger-passport-print";
 
 #define DEF_PASSPORT_FILE_SUFFIX    ".txt"
 
@@ -36,8 +34,15 @@ public:
     LOGGER_INPUT_SOURCE mode;                   ///< LOGGER_INPUT_SRC_STDIN(0)- from stdin, LOGGER_INPUT_SRC_FILES(1)- from files
     LOGGER_OUTPUT_FORMAT outputFormat;          ///< default 0- JSON
     int verbosity;                              ///< verbosity level
-    bool hasValue;
+
+    LoggerPassportPrintConfiguration();
 };
+LoggerPassportPrintConfiguration::LoggerPassportPrintConfiguration()
+    : mode(LOGGER_INPUT_SRC_STDIN), outputFormat(LOGGER_OUTPUT_FORMAT_JSON),
+    verbosity(0)
+{
+
+}
 
 /**
  * Parse command line
@@ -50,7 +55,7 @@ int parseCmd(
         int argc,
         char *argv[])
 {
-    struct arg_str *a_filenames = arg_strn(NULL, NULL, "<file>", 0, 100, "Passport file names");
+    struct arg_str *a_filenames = arg_strn(nullptr, nullptr, "<file>", 0, 100, "Passport file names");
     struct arg_lit *a_stdin = arg_lit0("r", "read", "Read from stdin");
     struct arg_str *a_output_format = arg_str0("f", "format", "json|text|table|postgresql|mysql|firebird|sqlite", "Default json");
 
@@ -79,13 +84,13 @@ int parseCmd(
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_TEXT;
             if (s == "table")
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_TABLE;
-            if (s == "postgresql")
+            if (s == SQL_DIALECT_NAME[0])
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_PG;
-            if (s == "mysql")
+            if (s == SQL_DIALECT_NAME[1])
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_MYSQL;
-            if (s == "firebird")
+            if (s == SQL_DIALECT_NAME[2])
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_FB;
-            if (s == "sqlite")
+            if (s == SQL_DIALECT_NAME[3])
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_SQLITE;
         }
         config->verbosity = a_verbosity->count;
@@ -143,10 +148,17 @@ int main(int argc, char **argv)
     LoggerPassportCollection *c = new LoggerPassportMemory();
 
     if (config.mode == LOGGER_INPUT_SRC_STDIN)
-        c->loadStream(time(NULL), std::cin);
+        c->loadStream(time(NULL), "cin", std::cin);
     else
         c->loadFiles(config.fileNames, DEF_PASSPORT_FILE_SUFFIX);
     // printErrorAndExit(ERR_LOGGER_PASSPORT_INVALID_FORMAT);
+    if (config.verbosity) {
+        std::cerr << "Files:";
+        for (auto it(config.fileNames.begin()); it != config.fileNames.end(); it++) {
+            std::cerr << *it << std::endl;
+        }
+        std::cerr << std::endl;
+    }
 
     std::string s;
 

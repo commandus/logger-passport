@@ -95,23 +95,22 @@ size_t listFiles
 )
 {
 	char *pathlist[2];
-	pathlist[1] = NULL;
+	pathlist[1] = nullptr;
 	if (flags & 1) {
 		char realtapth[PATH_MAX + 1];
 		pathlist[0] = realpath((char *) path.c_str(), realtapth);
 	} else {
 		pathlist[0] = (char *) path.c_str();
 	}
-	int parent_len = strlen(pathlist[0]) + 1;	///< Arggh. Remove '/' path delimiter(I mean it 'always' present). Not sure is it works fine. It's bad, I know.
+	unsigned int parent_len = strlen(pathlist[0]) + 1;	///< Arggh. Remove '/' path delimiter(I mean it 'always' present). Not sure is it works fine. It's bad, I know.
 
     size_t count = 0;
 #if defined(EMSCRIPTEN)
 #else
-	FTS* file_system = fts_open(pathlist, FTS_LOGICAL | FTS_NOSTAT, NULL);
+	FTS* file_system = fts_open(pathlist, FTS_LOGICAL | FTS_NOSTAT, nullptr);
     if (!file_system)
     	return 0;
-    FTSENT* parent;
-	while((parent = fts_read(file_system))) {
+	while(fts_read(file_system)) {
 		FTSENT* child = fts_children(file_system, 0);
 		if (errno != 0) {
 			// ignore, perhaps permission error
