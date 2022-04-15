@@ -59,19 +59,11 @@ dist_config_DATA = \
 #
 # Tests
 #
-test_compress_decompress_SOURCES = \
-	tests/test-compress-decompress.cpp
-test_compress_decompress_LDADD = $(L_LOGGER_PASSPORT)
-
-test_temperature_SOURCES = \
-	tests/test-temperature.c
-test_temperature_LDADD = $(L_LOGGER_PASSPORT)
-
-test_sql_SOURCES = \
-	tests/test-sql.cpp
-test_sql_LDADD = $(L_LOGGER_PASSPORT)
+test_passport_SOURCES = \
+	tests/test-passport.cpp
+test_passport_LDADD = $(L_LOGGER_PASSPORT)
 
 check_PROGRAMS = \
-	test-compress-decompress test-temperature test-sql
+	test-passport
 
 TESTS = $(check_PROGRAMS)
