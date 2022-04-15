@@ -2,7 +2,7 @@ AC_PREREQ([2.63])
 AC_INIT([logger-passport], [0.1], [andrey.ivanov@ikfia.ysn.ru])
 AM_INIT_AUTOMAKE([1.11 foreign no-define subdir-objects])
 AC_CONFIG_FILES([Makefile])
-AC_CONFIG_SRCDIR([logger-passport.c])
+AC_CONFIG_SRCDIR([logger-passport-print.cpp])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 
