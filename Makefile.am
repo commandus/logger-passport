@@ -11,7 +11,8 @@ AM_CXXFLAGS= -std=c++11 $(COMMON_C_FLAGS)
 AM_CPPFLAGS = $(COMMON_C_FLAGS)
 
 HDRS = \
-	platform.h errlist.h logger-passport.h \
+	platform.h errlist.h logger-passport.h logger-passport-collection.h \
+	list-file.h \
 	third_party/argtable3/argtable3.h
 
 #
@@ -20,7 +21,8 @@ HDRS = \
 bin_PROGRAMS = logger-passport-print
 
 LIBLOGGERPASSPORTSRC = \
-	logger-passport.cpp
+	logger-passport.cpp logger-passport-collection.cpp list-file.cpp \
+	errlist.cpp
 
 #
 #	Static library

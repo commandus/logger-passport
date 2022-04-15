@@ -1,6 +1,6 @@
 /**
- * @brief Logger Huffman v.4 print packet utility
- * @file logger-huffman-print.cpp
+ * @brief Logger passport passport print utility
+ * @file logger-passport-print.cpp
  * Copyright (c) 2022 andrey.ivanov@ikfia.ysn.ru
  * Yu.G. Shafer Institute of Cosmophysical Research and Aeronomy of Siberian Branch of the Russian Academy of Sciences
  * MIT license
@@ -13,61 +13,45 @@
 
 #include "argtable3/argtable3.h"
 
-#include "logger-huffman.h"
-#include "logger-collection.h"
-#include "logger-parse.h"
-/*
-#include "utilcompress.h"
-*/
+#include "logger-passport.h"
+#include "logger-passport-collection.h"
 #include "errlist.h"
 
-const std::string programName = "logger-huffman-print";
+const std::string programName = "logger-passport-print";
 
-#ifdef _MSC_VER
-#undef ENABLE_TERM_COLOR
-#else
-#define ENABLE_TERM_COLOR	1
-#endif
+#define DEF_PASSPORT_FILE_SUFFIX    ".txt"
 
 typedef enum {
-    LOGGER_OUTPUT_FORMAT_PG = 0,
-    LOGGER_OUTPUT_FORMAT_MYSQL = 1,
-    LOGGER_OUTPUT_FORMAT_FB = 2,
-    LOGGER_OUTPUT_FORMAT_SQLITE = 3,
-
-  	LOGGER_OUTPUT_FORMAT_JSON = 4,			// default
-	LOGGER_OUTPUT_FORMAT_TEXT = 5,		    // text
-    LOGGER_OUTPUT_FORMAT_TABLE = 6		    // table
-
-} LOGGER_OUTPUT_FORMAT;
+    LOGGER_INPUT_SRC_STDIN = 0,                 ///< read from stdin
+    LOGGER_INPUT_SRC_FILES = 1                  ///< read from files
+} LOGGER_INPUT_SOURCE;
 
 static const std::string SQL_DIALECT_NAME[] = {
     "postgresql", "mysql", "firebird", "sqlite"
 };
 
-class LoggerHuffmanPrintConfiguration {
+class LoggerPassportPrintConfiguration {
 public:
-    std::vector<std::string> values;            // packet data
-    int mode;                                   // 0- binary from stdin, 1- hex in command line parameter
-    LOGGER_OUTPUT_FORMAT outputFormat;          // default 0- JSON
-    int verbosity;                              // verbosity level
+    std::vector<std::string> fileNames;         ///< file names
+    LOGGER_INPUT_SOURCE mode;                   ///< LOGGER_INPUT_SRC_STDIN(0)- from stdin, LOGGER_INPUT_SRC_FILES(1)- from files
+    LOGGER_OUTPUT_FORMAT outputFormat;          ///< default 0- JSON
+    int verbosity;                              ///< verbosity level
     bool hasValue;
 };
 
 /**
- * Parse command linelogger-huffman-impl
+ * Parse command line
  * Return 0- success
  *        1- show help and exit, or command syntax error
  *        2- output file does not exists or can not open to write
  **/
 int parseCmd(
-        LoggerHuffmanPrintConfiguration *config,
+        LoggerPassportPrintConfiguration *config,
         int argc,
         char *argv[])
 {
-    // device path
-    struct arg_str *a_value_hex = arg_strn(NULL, NULL, "<packet>", 0, 100, "Packet data in hex. By default read binary from stdin");
-    struct arg_lit *a_value_stdin = arg_lit0("r", "read", "Read binary data from stdin");
+    struct arg_str *a_filenames = arg_strn(NULL, NULL, "<file>", 0, 100, "Passport file names");
+    struct arg_lit *a_stdin = arg_lit0("r", "read", "Read from stdin");
     struct arg_str *a_output_format = arg_str0("f", "format", "json|text|table|postgresql|mysql|firebird|sqlite", "Default json");
 
     struct arg_lit *a_verbosity = arg_litn("v", "verbose", 0, 3, "Set verbosity level");
@@ -75,7 +59,7 @@ int parseCmd(
     struct arg_end *a_end = arg_end(20);
 
     void *argtable[] = {
-        a_value_hex, a_value_stdin, a_output_format,
+        a_filenames, a_stdin, a_output_format,
         a_verbosity, a_help, a_end
     };
 
@@ -105,17 +89,15 @@ int parseCmd(
                 config->outputFormat = LOGGER_OUTPUT_FORMAT_SQLITE;
         }
         config->verbosity = a_verbosity->count;
-        if (a_value_hex->count) {
-            for (int i = 0; i < a_value_hex->count; i++) {
-                config->values.push_back(hex2binString(a_value_hex->sval[i], strlen(*a_value_hex->sval)));
-            }
-            
-        } else {
-            if (a_value_stdin->count) {
-                // read from stdin
-                std::istreambuf_iterator<char> begin(std::cin), end;
-                config->values.push_back(std::string(begin, end));
-            }
+        for (int i = 0; i < a_filenames->count; i++) {
+            config->fileNames.push_back(a_filenames->sval[i]);
+        }
+        if (a_stdin->count)
+            config->mode = LOGGER_INPUT_SRC_STDIN;
+        else {
+            config->mode = LOGGER_INPUT_SRC_FILES;
+            if (config->fileNames.size() == 0)
+                nerrors++;
         }
     }
 
@@ -126,13 +108,13 @@ int parseCmd(
         std::cerr << "Usage: " << programName << std::endl;
         arg_print_syntax(stderr, argtable, "\n");
         std::cerr
-            << "Print logger packet" << std::endl
-            << "  logger-huffman-print C0004A..." << std::endl;
+            << "Print logger passport" << std::endl
+            << "  logger-passport-print <file1> <file2> <dir1> ..." << std::endl;
 
         arg_print_glossary(stderr, argtable, "  %-25s %s\n");
         arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
 
-        return ERR_LOGGER_HUFFMAN_COMMAND_LINE_HELP;
+        return ERR_LOGGER_PASSPORT_COMMAND_LINE_HELP;
     }
 
     arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
@@ -143,7 +125,7 @@ static void printErrorAndExit(
     int errCode
 )
 {
-    std::cerr << ERR_MESSAGE << errCode << ": " << strerror_logger_huffman(errCode) << std::endl;
+    std::cerr << ERR_MESSAGE << errCode << ": " << strerror_logger_passport(errCode) << std::endl;
     exit(errCode);
 }
 
@@ -151,34 +133,36 @@ const char* TAB_DELIMITER = "\t";
 
 int main(int argc, char **argv)
 {
-    LoggerHuffmanPrintConfiguration config;
+    LoggerPassportPrintConfiguration config;
     int r = parseCmd(&config, argc, argv);
-    if (r == ERR_LOGGER_HUFFMAN_COMMAND_LINE_HELP)
+    if (r == ERR_LOGGER_PASSPORT_COMMAND_LINE_HELP)
         exit(r);
     if (r != 0)
         printErrorAndExit(r);
 
-    LoggerKosaCollection c;
+    LoggerPassportCollection *c = new LoggerPassportMemory();
 
-    LOGGER_PACKET_TYPE t = c.put(config.values);
-
-    if (t == LOGGER_PACKET_UNKNOWN)
-        printErrorAndExit(ERR_LOGGER_HUFFMAN_INVALID_PACKET);
+    if (config.mode == LOGGER_INPUT_SRC_STDIN)
+        c->loadStream(time(NULL), std::cin);
+    else
+        c->loadFiles(config.fileNames, DEF_PASSPORT_FILE_SUFFIX);
+    // printErrorAndExit(ERR_LOGGER_PASSPORT_INVALID_FORMAT);
 
     std::string s;
 
     switch (config.outputFormat) {
         case LOGGER_OUTPUT_FORMAT_JSON:
-            s = c.toJsonString();
+            s = c->toJsonString();
             break;
         case LOGGER_OUTPUT_FORMAT_TEXT:
-            s = c.toString();
+            s = c->toString();
             break;
         case LOGGER_OUTPUT_FORMAT_TABLE:
-            s = c.toTableString();
+            s = c->toTableString();
             break;
         default: // LOGGER_OUTPUT_FORMAT_PG LOGGER_OUTPUT_FORMAT_MYSQL LOGGER_OUTPUT_FORMAT_FB LOGGER_OUTPUT_FORMAT_SQLITE
-            s = sqlInsertPackets1((void *) &c, config.outputFormat);
+            s = c->sqlInsertPackets(config.outputFormat);
     }
     std::cout << s << std::endl;
+    delete c;
 }
