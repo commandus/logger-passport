@@ -131,19 +131,6 @@ bool isOrdinalFile(
 
 #else
 
-bool isOrdinalFile(
-	time_t& retModificationTime,
-	const char* path
-) {
-	struct stat s;
-	if (stat(path, &s) == 0) {
-		retModificationTime = s.st_mtime;
-		if (s.st_mode & S_IFREG)
-			return true;
-	}
-	return false;
-}
-
 /**
  * Return list of files in specified path
  * @param path
