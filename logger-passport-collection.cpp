@@ -275,17 +275,17 @@ std::string LoggerPassportCollection::toJsonString() const
 
 std::string LoggerPassportCollection::toString() const
 {
-
+	return toJsonString();
 }
 
 std::string LoggerPassportCollection::toTableString() const
 {
-
+	return toJsonString();
 }
 
 std::string LoggerPassportCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
 {
-
+	return toJsonString();
 }
 
 static int plume1 = 0;
@@ -303,6 +303,7 @@ int LoggerPassportCollection::loadStream(
 	plume1++;
 	it.id.year = 2022;
 	push(it);
+	return 0;
 }
 
 int LoggerPassportCollection::loadString(
@@ -345,7 +346,7 @@ int LoggerPassportCollection::loadFiles(
 	const std::string &fileSuffix
 )
 {
-	int r;
+	int r = 0;
 	for (std::vector<std::string>::const_iterator it(fileNames.begin()); it != fileNames.end(); it++) {
 		r = loadFile(*it, fileSuffix);
 		if (r)
