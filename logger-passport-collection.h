@@ -74,7 +74,7 @@ class LoggerPassportItem {
 	public:
 		time_t modificationTime;
 		LoggerPlumeId id;
-        SensorCoefficients plume;
+        std::vector<SensorCoefficients> sensors;
         std::string name;
 
 		LoggerPassportItem();
@@ -88,16 +88,30 @@ class LoggerPassportItem {
 
 };
 
+// parser tokens
+typedef enum {
+	TOK_YEAR_PLUME = 1,
+	TOK_MAC = 3,
+	TOK_COEFF = 4,
+	TOK_END = 5
+} PASSPORT_TOKEN;
+
+/**
+ * @brief abstract class
+ */
+
 class LoggerPassportCollection {
 	private:
 		size_t listDir(std::vector<std::string> &retval, const std::string &path, const std::string &fileSuffix);
+		std::string next(std::istream& strm);
 	public:
+		// Abstract methods
 		virtual size_t count() const = 0;
 		virtual size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const = 0;
 		virtual const LoggerPassportItem *get(const LoggerPlumeId &id) const = 0;
 		virtual void push(LoggerPassportItem &value) = 0;
 
-		int loadStream(time_t modificationTime, const std::string &name, const std::istream &strm);
+		int parse(time_t modificationTime, const std::string &name, std::istream &strm);
 		int loadString(time_t modificationTime, const std::string &value);
 		int loadFile(const std::string &fileName, const std::string &fileSuffix);
 		int loadFiles(const std::vector<std::string> &fileNames, const std::string &fileSuffix);
@@ -108,6 +122,9 @@ class LoggerPassportCollection {
         std::string sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const;
 };
 
+/**
+ * @brief in-memory 
+ */
 class LoggerPassportMemory: public LoggerPassportCollection {
 	public:
 		std::map <LoggerPlumeId, LoggerPassportItem> values;

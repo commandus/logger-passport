@@ -224,12 +224,20 @@ LoggerPassportItem::~LoggerPassportItem()
 std::string LoggerPassportItem::toJsonString() const
 {
 	std::stringstream ss;
-	ss << "{" 
+	ss << "{"
 		<< "\"modified\": " << modificationTime
-        << ", \"name\": \"" << name
+		<< ", \"name\": \"" << name
 		<< "\", \"id\": " << id.toJsonString()
-        << ", \"plume\": " << this->plume.toJsonString()
-		<< "}";
+		<< ", \"plume\": [";
+	bool isFirst = true;
+	for (auto it(sensors.begin()); it != sensors.end(); it++) {
+		if (isFirst)
+			isFirst = false;
+		else
+			ss << ", ";
+		ss << it->toJsonString();
+	}
+	ss << "]}";
 	return ss.str();
 }
 
@@ -290,20 +298,179 @@ std::string LoggerPassportCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outp
 
 static int plume1 = 0;
 
-int LoggerPassportCollection::loadStream(
-	time_t modificationTime,
-    const std::string &name, ///< optional resource name
-	const std::istream &strm
+static void skipComments(
+	std::istream& strm
 )
 {
-	LoggerPassportItem it;
-	it.modificationTime = modificationTime;
-	it.id.plume = plume1;
-    it.name = name;     // optional resource name
-	plume1++;
-	it.id.year = 2022;
-	push(it);
-	return 0;
+	while (!strm.eof()) {
+		char c;
+		strm >> c;
+		if (strm.bad())
+			break;
+		if (c == 10)
+			break;
+	}
+}
+
+std::string LoggerPassportCollection::next(
+	std::istream& strm
+)
+{
+	std::stringstream ss;
+	char c;
+	// skip spaces
+	while (!strm.eof()) {
+		if (!strm.get(c))
+			break;
+		if (c <= 32)
+			continue;
+		if (c == '#')
+			skipComments(strm);
+		else
+			ss << c;
+		break;
+	}
+	
+	while (!strm.eof()) {
+		char c;
+		if (!strm.get(c))
+			break;
+		if (c <= 32)
+			break;
+		if (c == '#')
+			skipComments(strm);
+		else
+			ss << c;
+	}
+	return ss.str();
+}
+
+static bool putYearPlume(
+	LoggerPassportItem &retval,
+	const std::string &value
+)
+{
+	size_t p = value.find('-');
+	if (p == std::string::npos)
+		return false;
+	std::string sYear = value.substr(1, p);
+	retval.id.year = strtol(sYear.c_str(), NULL, 10);
+	std::string sPlume= value.substr(p + 1);
+	retval.id.plume = strtol(sPlume.c_str(), NULL, 10);
+	return true;
+}
+
+static bool putMac(
+	SensorCoefficients &retval,
+	const std::string& value
+)
+{
+	uint64_t m = strtoull(value.c_str(), NULL, 16);
+	if (!m)
+		return false;
+	retval.mac = m;
+	
+	return true;
+}
+
+static bool putCoefficient(
+	SensorCoefficients& retval,
+	std::string& value
+)
+{
+	size_t p = value.find(',');
+	if (p != std::string::npos)
+		value[p] = '.';
+	double c = strtod(value.c_str(), NULL);
+	retval.coefficents.push_back(c);
+	return true;
+}
+
+static bool isHex(
+	const std::string& value
+)
+{
+	for (int i = 0; i < value.size(); i++) {
+		if (isxdigit(value[i]))
+			continue;
+		return false;
+	}
+	return true;
+}
+
+int LoggerPassportCollection::parse(
+	time_t modificationTime,
+    const std::string &name, ///< optional resource name
+	std::istream &strm
+)
+{
+	PASSPORT_TOKEN token = TOK_YEAR_PLUME;
+	LoggerPassportItem item;
+	SensorCoefficients sensor;
+
+	int r = 0;
+	int sensorCount = 0;
+	while (!strm.eof()) {
+		std::string value = next(strm);
+		// fix
+		if (token == TOK_COEFF) {
+			if (value.size()) {
+				if (value[0] == 'N') {
+					token = TOK_YEAR_PLUME;
+				}
+				else {
+					if (isHex(value)) {	// is hex number
+						token = TOK_MAC;
+					}
+				}
+			}
+		}
+		switch (token)
+		{
+		case TOK_YEAR_PLUME:
+			if (sensorCount) {
+				item.sensors.push_back(sensor);
+				sensorCount = 0;
+			}
+			if (r)
+				push(item);
+			else {
+				if (!putYearPlume(item, value))
+					token = TOK_END;
+				else {
+					item.modificationTime = modificationTime;
+					item.name = name;     // optional resource name
+					token = TOK_MAC;
+					r++;
+				}
+			}
+			break;
+		case TOK_MAC:
+			if (sensorCount) {
+				item.sensors.push_back(sensor);
+			}
+			if (!putMac(sensor, value))
+				token = TOK_END;
+			else {
+				sensorCount++;
+				token = TOK_COEFF;
+			}
+			sensor.coefficents.clear();
+			break;
+		case TOK_COEFF:
+			if (!putCoefficient(sensor, value))
+				token = TOK_END;
+			else {
+				token = TOK_COEFF;
+			}
+			break;
+		default:	// TOK_END
+			break;
+		}
+		if (token == TOK_END)
+			break;
+	}
+	return r;
 }
 
 int LoggerPassportCollection::loadString(
@@ -312,7 +479,7 @@ int LoggerPassportCollection::loadString(
 )
 {
 	std::stringstream ss(value);
-	return loadStream(modificationTime, noname, ss);
+	return parse(modificationTime, noname, ss);
 }
 
 int LoggerPassportCollection::loadFile(
@@ -326,8 +493,12 @@ int LoggerPassportCollection::loadFile(
 		listDir(fileNames, fileName, fileSuffix);
 		return loadFiles(fileNames, fileSuffix);
 	}
-	std::ifstream f(fileName, std::ios::in);
-	int r = loadStream(m, fileName, f);
+	std::ifstream f(fileName, std::ifstream::in | std::ifstream::binary);
+	if (f.bad()) {
+		f.close();
+		return 0;
+	}
+	int r = parse(m, fileName, f);
 	f.close();
 	return r;
 }
@@ -349,7 +520,7 @@ int LoggerPassportCollection::loadFiles(
 	int r = 0;
 	for (std::vector<std::string>::const_iterator it(fileNames.begin()); it != fileNames.end(); it++) {
 		r = loadFile(*it, fileSuffix);
-		if (r)
+		if (r < 0)
 			break;
 	}
 	return r;

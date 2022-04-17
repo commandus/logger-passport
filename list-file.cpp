@@ -90,7 +90,7 @@ size_t listFiles
 			} else {
 				if (f.find(suffix) != std::string::npos) {
 					if (retval)
-						retval->push_back(fd.cFileName);
+						retval->push_back(path + "\\" + fd.cFileName);
 					r++;
 				}
 			}
