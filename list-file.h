@@ -40,4 +40,11 @@ bool isOrdinalFile(
 	const char *path
 );
 
+/**
+ * Return true if file name extension is .json
+ * @param path file name to examine
+ * @return true if file name extension is .json
+ */
+bool fileIsJSON(const std::string &path);
+
 #endif

@@ -5,7 +5,7 @@ project(${PROJECT_NAME} VERSION 1.0)
 set(CMAKE_CXX_STANDARD 11)
 
 set(LIB_LOGGER_PASSPORT_SRC
-	logger-passport.cpp logger-passport-collection.cpp 
+	logger-passport-collection.cpp 
 	list-file.cpp errlist.cpp
 )
 set(SRC_LOGGER_PASSPORT_PRINT

@@ -3,7 +3,7 @@
 
 // Error codes
 #define LOGGER_PASSPORT_OK 						0
-#define	ERR_LIST_COUNT							9
+#define	ERR_LIST_COUNT							10
 #define ERR_LOGGER_PASSPORT_SEGMENTATION_FAULT	-710
 #define ERR_LOGGER_PASSPORT_ABRT           		-711
 #define ERR_LOGGER_PASSPORT_COMMAND_LINE   		-712
@@ -13,6 +13,7 @@
 #define ERR_LOGGER_PASSPORT_PARAM_INVALID		-716
 #define ERR_LOGGER_PASSPORT_NO_DATA      		-717
 #define ERR_LOGGER_PASSPORT_INVALID_FORMAT		-718
+#define ERR_LOGGER_PASSPORT_INVALID_JSON        -719
 
 #define ERR_MESSAGE								"Error "
 #define ERR_DEBUG								"Info "

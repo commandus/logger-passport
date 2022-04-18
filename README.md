@@ -16,6 +16,56 @@ or
 git clone https://github.com/commandus/logger-passport.git
 ```
 
+## Files
+
+Each file consists of one or more sensor plumes.
+
+Each sensor has MAC address.
+
+Usually sensor has 2 or 3 coefficients to spline temperature using polynomial: 
+
+```
+Tpoly = a * Traw + b + c
+```
+By default, coefficient C = 0.0 (when two coefficients are used).
+
+Some sensors have 9 coefficients to spline temperature using polynomial in 3 temperature ranges:
+
+- -273 .. -3 a, b, c
+- [-3 .. 3] a1, b1, c1
+- 3 .. 30] as is
+- 30 .. max a2, b2, c2
+
+```
+Tpoly = a * Traw + b + c in range <-3C
+Tpoly = a1 * Traw + b1 + c1 in range >=-3C and <= 3
+Tpoly = Traw in range  >3 and <= 30
+Tpoly = a2 * Traw + b2 + c2 in range >30
+```
+
+Each sensor has MAC address and 2, 3 or 9 coefficients to spline temperature using polynomial:
+
+Passport file structure is:
+```
+<FILE> := {<PLUME>} NEND
+<PLUME> := <PLUME_ID>{<SENSOR>} 
+<PLUME_ID> := N<YEAR>-<N>
+<SENSOR> := <MAC><A><B>[<C><A1><B1><C1><A2><B2><C2>]
+<MAC> := hex
+<A> := double
+<B> := double
+<C> := double
+<YEAR> := 00..99
+<N> := 1..99
+```
+
+For instance passport file N10.txt
+```
+N10-1
+# comment
+289FBD9B0600008C	1,0117	-0,12379
+NEND
+```
 ## Usage
 
 ### Library
@@ -60,12 +110,12 @@ r = parsePacketsToSQLClause(OUTPUT_FORMAT_SQL, dialect, *c.koses.begin());
 
 #### Second way
 
-Header file: logger-parse.h
+Header file: logger-parseText.h
 
 Source code example:
 
 ```
-#include "logger-parse.h"
+#include "logger-parseText.h"
 ...
 void *env = initLoggerParser();
 
@@ -104,7 +154,7 @@ called) then it removes from the memory.
 
 - initLoggerParser() return an descriptor
 - sqlCreateTable() return "CREATE TABLE .." SQL statement string
-- parsePacket() trying to parse received packet. Packets stored in memory.  
+- parsePacket() trying to parseText received packet. Packets stored in memory.  
 - sqlInsertPackets() find completed packets
 - flushLoggerParser()
 - doneLoggerParser()

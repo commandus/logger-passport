@@ -10,10 +10,20 @@ COMMON_C_FLAGS = -Ithird_party -I../../third_party -DDEBUG_PRINT -O2
 AM_CXXFLAGS= -std=c++11 $(COMMON_C_FLAGS)
 AM_CPPFLAGS = $(COMMON_C_FLAGS)
 
+RAPID_HDRS = \
+	third_party/rapidjson/allocators.h       third_party/rapidjson/encodings.h        third_party/rapidjson/fwd.h             third_party/rapidjson/memorystream.h    third_party/rapidjson/prettywriter.h   third_party/rapidjson/schema.h  \
+	third_party/rapidjson/writer.h           third_party/rapidjson/document.h         third_party/rapidjson/filereadstream.h  third_party/rapidjson/istreamwrapper.h  third_party/rapidjson/ostreamwrapper.h third_party/rapidjson/rapidjson.h \
+	third_party/rapidjson/stream.h           third_party/rapidjson/encodedstream.h    third_party/rapidjson/filewritestream.h third_party/rapidjson/memorybuffer.h    third_party/rapidjson/pointer.h        third_party/rapidjson/reader.h \
+	third_party/rapidjson/stringbuffer.h     third_party/rapidjson/error/en.h         third_party/rapidjson/error/error.h     third_party/rapidjson/internal/biginteger.h third_party/rapidjson/internal/dtoa.h  third_party/rapidjson/internal/itoa.h \
+	third_party/rapidjson/internal/pow10.h   third_party/rapidjson/internal/stack.h   third_party/rapidjson/internal/strtod.h third_party/rapidjson/internal/diyfp.h  third_party/rapidjson/internal/ieee754.h third_party/rapidjson/internal/meta.h \
+	third_party/rapidjson/internal/regex.h   third_party/rapidjson/internal/strfunc.h third_party/rapidjson/internal/swap.h \
+	third_party/rapidjson/msinttypes/inttypes.h third_party/rapidjson/msinttypes/stdint.h
+
 HDRS = \
-	platform.h errlist.h logger-passport.h logger-passport-collection.h \
+	platform.h errlist.h logger-passport-collection.h \
 	list-file.h \
-	third_party/argtable3/argtable3.h
+	third_party/argtable3/argtable3.h \
+	$(RAPID_HDRS)
 
 #
 # Binaries
@@ -21,7 +31,7 @@ HDRS = \
 bin_PROGRAMS = logger-passport-print
 
 LIBLOGGERPASSPORTSRC = \
-	logger-passport.cpp logger-passport-collection.cpp list-file.cpp \
+	logger-passport-collection.cpp list-file.cpp \
 	errlist.cpp
 
 #
