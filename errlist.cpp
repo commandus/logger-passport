@@ -13,7 +13,8 @@ static const char *error_list_en[ERR_LIST_COUNT] =
 	"Insufficient parameters",
 	"Invalid parameter",
 	"No data",
-	"Invalid packet or no packet"
+	"Invalid packet or no packet",
+    "Invalid JSON"
 };
 
 const char *strerror_logger_passport(

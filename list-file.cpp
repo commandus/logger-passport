@@ -1,7 +1,6 @@
 /*
  * @file list-file.cpp
  */
-#include <iostream>
 
 #if defined(_WIN32) || defined(_WIN64)
 #include <windows.h>
@@ -13,17 +12,10 @@
 #endif
 #else
 #include <sys/param.h>
-#include <fcntl.h>
-
-#include <ftw.h>
-
-#include <unistd.h>
 #include <stdlib.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <string.h>
-#include <errno.h>
-#include <cstdio>
+#include <cstring>
+#include <cerrno>
 
 #if defined(EMSCRIPTEN)
 #else
@@ -211,6 +203,18 @@ bool isOrdinalFile(
 			return true;
 	}
 	return false;
+}
+
+/**
+ * Return true if file name extension is .json
+ * @param path file name to examine
+ * @return true if file name extension is .json
+ */
+bool fileIsJSON(
+    const std::string &path
+)
+{
+    return (path.find(".json") == path.size() - 5);
 }
 
 #endif

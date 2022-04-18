@@ -2,10 +2,40 @@
 #include <sstream>
 #include <fstream>
 #include <iomanip>
+#include <rapidjson/document.h>
+
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <rapidjson/istreamwrapper.h>
 
 #include "logger-passport-collection.h"
 #include "list-file.h"
+#include "errlist.h"
 
+typedef enum {
+    JSON_MODIFIED = 0,
+    JSON_NAME = 1,
+    JSON_ID = 2,
+    JSON_ID_PLUME = 3,
+    JSON_ID_YEAR = 4,
+    JSON_SENSORS = 5,
+    JSON_SENSORS_MAC = 6,
+    JSON_SENSORS_COEFFICIENTS = 7
+} JSON_PASSPORT_NAME;
+
+const char *COMMA = ", ";
+
+const char *JSON_PASSPORT_NAMES[] = {
+    "modified",
+    "name",
+    "id",
+    "plume",
+    "year",
+    "sensors",
+    "mac",
+    "coefficients"
+};
 // -------- SensorMAC --------
 
 SensorMAC::SensorMAC()
@@ -46,6 +76,26 @@ std::string SensorMAC::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
     return toString();
 }
 
+bool SensorMAC::operator==(const SensorMAC &another) const
+{
+    return mac.u == another.mac.u;
+}
+
+bool SensorMAC::operator!=(const SensorMAC &another) const
+{
+    return !(*this == another);
+}
+
+bool SensorMAC::operator==(uint64_t another) const
+{
+    return mac.u == another;
+}
+
+bool SensorMAC::operator!=(uint64_t another) const
+{
+    return !(*this == another);
+}
+
 void SensorMAC::set(const std::string &value)
 {
     std::stringstream ss(value);
@@ -76,7 +126,7 @@ std::string SensorCoefficients::toString() const
 {
     std::stringstream ss;
     ss << mac.toString() << " ";
-    for (auto it(coefficents.begin()); it != coefficents.end(); it++) {
+    for (auto it(coefficients.begin()); it != coefficients.end(); it++) {
         ss << std::fixed << std::setprecision(10) << *it << " ";
     }
     return ss.str();
@@ -85,14 +135,15 @@ std::string SensorCoefficients::toString() const
 std::string SensorCoefficients::toJsonString() const
 {
     std::stringstream ss;
-    ss << "{\"mac\": \"" << mac.toString() << "\", \"coefficients\": [";
+    ss << "{\"" << JSON_PASSPORT_NAMES[JSON_SENSORS_MAC] << "\": \"" << mac.toString()
+        << "\", \"" << JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS] << "\": [";
     bool isFirst = true;
-    for (auto it(coefficents.begin()); it != coefficents.end(); it++) {
+    for (auto it(coefficients.begin()); it != coefficients.end(); it++) {
         if (isFirst)
             isFirst = false;
         else
-            ss << ", ";
-        ss << std::fixed << std::setprecision(10) << *it;
+            ss << COMMA;
+        ss << std::fixed << std::setprecision(5) << *it;
     }
     ss << "]}";
     return ss.str();
@@ -108,6 +159,40 @@ std::string SensorCoefficients::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputForm
     return toString();
 }
 
+/**
+ * @brief Return amended temperature
+ * Tpoly = a * Traw + b + c * Traw * Traw in range <-3C
+ * Tpoly = a1 * Traw + b1 + c1 * Traw * Traw in range >=-3C and <= 3
+ * Tpoly = Traw in range  >3 and <= 30
+ * Tpoly = a2 * Traw + b2 + c2 * Traw * Traw in range >30
+
+ * @param temperature raw temperature
+ * @return amended temperature
+ */
+double SensorCoefficients::calc(
+    double temperature
+)
+{
+    int sz = coefficients.size();
+    int t = temperature;
+    switch (sz) {
+        case 2:
+            return coefficients[0] * temperature + coefficients[1];
+        case 3:
+            return coefficients[0] * temperature + coefficients[1] + coefficients[2] * coefficients[2] * temperature;
+        case 9:
+            if (t < -3)
+                return coefficients[0] * temperature + coefficients[1] + coefficients[2] * coefficients[2] * temperature;
+            if (t <= 3)
+                return coefficients[3] * temperature + coefficients[4] + coefficients[5] * coefficients[5] * temperature;
+            if (t <= 30)
+                return coefficients[6] * temperature + coefficients[7] + coefficients[8] * coefficients[8] * temperature;
+            return temperature;
+        default:
+            return temperature;
+    }
+}
+
 // -------- LoggerPlumeId --------
 
 LoggerPlumeId::LoggerPlumeId()
@@ -115,6 +200,7 @@ LoggerPlumeId::LoggerPlumeId()
 {
 
 }
+
 LoggerPlumeId::LoggerPlumeId(
 	const LoggerPlumeId &value
 )
@@ -123,10 +209,10 @@ LoggerPlumeId::LoggerPlumeId(
 	
 }
 LoggerPlumeId::LoggerPlumeId(
-	int aplume,
-	int ayear
+	int aPlume,
+	int aYear
 )
-	: plume(aplume), year(ayear)
+	: plume(aPlume), year(aYear)
 {
 	
 }
@@ -142,7 +228,6 @@ LoggerPlumeId& LoggerPlumeId::operator=(
 
 bool LoggerPlumeId::operator<(const LoggerPlumeId &another) const
 {
-    // std::cerr << toJsonString() << " < " << another.toJsonString()<< std::endl;
 	if (plume < another.plume)
 		return true;
 	if (plume > another.plume)
@@ -168,8 +253,8 @@ std::string LoggerPlumeId::toJsonString() const
 {
 	std::stringstream ss;
 	ss << "{" 
-		<< "\"plume\": " << plume
-		<< ", \"year\": " << year
+		<< "\"" << JSON_PASSPORT_NAMES[JSON_ID_PLUME] << "\": " << plume
+		<< ", \"" << JSON_PASSPORT_NAMES[JSON_ID_YEAR] << "\": " << year
 		<< "}";
 	return ss.str();
 }
@@ -191,69 +276,69 @@ std::string LoggerPlumeId::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) c
 	return toString();
 }
 
-// -------- LoggerPassportItem --------
+// -------- LoggerPassport --------
 
 const static std::string noname;
 
-LoggerPassportItem::LoggerPassportItem()
+LoggerPassport::LoggerPassport()
 	: modificationTime(0), name(noname)
 {
 }
 
-LoggerPassportItem::LoggerPassportItem(
-	const LoggerPassportItem& value
+LoggerPassport::LoggerPassport(
+	const LoggerPassport& value
 )
 	: modificationTime(value.modificationTime), id(value.id), name(value.name)
 {
 
 }
 
-LoggerPassportItem::LoggerPassportItem(
-	time_t amodificationTime
+LoggerPassport::LoggerPassport(
+	time_t aModificationTime
 )
-	: modificationTime(amodificationTime), name(noname)
+	: modificationTime(aModificationTime), name(noname)
 {
 
 }
 
-LoggerPassportItem::~LoggerPassportItem()
+LoggerPassport::~LoggerPassport()
 {
 
 }
 
-std::string LoggerPassportItem::toJsonString() const
+std::string LoggerPassport::toJsonString() const
 {
 	std::stringstream ss;
 	ss << "{"
-		<< "\"modified\": " << modificationTime
-		<< ", \"name\": \"" << name
-		<< "\", \"id\": " << id.toJsonString()
-		<< ", \"plume\": [";
+		<< "\"" << JSON_PASSPORT_NAMES[JSON_MODIFIED] << "\": " << modificationTime
+		<< ", \"" << JSON_PASSPORT_NAMES[JSON_NAME] << "\": \"" << name
+		<< "\", \"" << JSON_PASSPORT_NAMES[JSON_ID] << "\": " << id.toJsonString()
+		<< ", \""<< JSON_PASSPORT_NAMES[JSON_SENSORS] << "\": [";
 	bool isFirst = true;
 	for (auto it(sensors.begin()); it != sensors.end(); it++) {
 		if (isFirst)
 			isFirst = false;
 		else
-			ss << ", ";
+			ss << COMMA;
 		ss << it->toJsonString();
 	}
 	ss << "]}";
 	return ss.str();
 }
 
-std::string LoggerPassportItem::toString() const
+std::string LoggerPassport::toString() const
 {
 	std::stringstream ss;
 	ss << id.toString() << " " << modificationTime;
 	return ss.str();
 }
 
-std::string LoggerPassportItem::toTableString() const
+std::string LoggerPassport::toTableString() const
 {
 	return toString();
 }
 
-std::string LoggerPassportItem::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
+std::string LoggerPassport::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
 {
 	return toString();
 }
@@ -268,13 +353,13 @@ std::string LoggerPassportCollection::toJsonString() const
 	ss << "[";
 	bool firstItem = true;
 	for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
-		const LoggerPassportItem *v = get(*it);
+		const LoggerPassport *v = get(*it);
 		if (!v)
 			continue;
 		if (firstItem)
 			firstItem = false;
 		else
-			ss << ", ";
+			ss << COMMA;
 		ss << v->toJsonString();
 	}
 	ss << "]";
@@ -296,7 +381,10 @@ std::string LoggerPassportCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outp
 	return toJsonString();
 }
 
-static int plume1 = 0;
+const LoggerPassport *LoggerPassportCollection::get(int serialNo, int year) const
+{
+    return get(LoggerPlumeId(serialNo, year));
+}
 
 static void skipComments(
 	std::istream& strm
@@ -332,7 +420,6 @@ std::string LoggerPassportCollection::next(
 	}
 	
 	while (!strm.eof()) {
-		char c;
 		if (!strm.get(c))
 			break;
 		if (c <= 32)
@@ -346,29 +433,29 @@ std::string LoggerPassportCollection::next(
 }
 
 static bool putYearPlume(
-	LoggerPassportItem &retval,
-	const std::string &value
+        LoggerPassport &retVal,
+        const std::string &value
 )
 {
 	size_t p = value.find('-');
 	if (p == std::string::npos)
 		return false;
 	std::string sYear = value.substr(1, p);
-	retval.id.year = strtol(sYear.c_str(), NULL, 10);
+    retVal.id.year = strtol(sYear.c_str(), nullptr, 10);
 	std::string sPlume= value.substr(p + 1);
-	retval.id.plume = strtol(sPlume.c_str(), NULL, 10);
+    retVal.id.plume = strtol(sPlume.c_str(), nullptr, 10);
 	return true;
 }
 
 static bool putMac(
-	SensorCoefficients &retval,
+	SensorCoefficients &retVal,
 	const std::string& value
 )
 {
-	uint64_t m = strtoull(value.c_str(), NULL, 16);
+	uint64_t m = strtoull(value.c_str(), nullptr, 16);
 	if (!m)
 		return false;
-	retval.mac = m;
+    retVal.mac = m;
 	
 	return true;
 }
@@ -381,8 +468,8 @@ static bool putCoefficient(
 	size_t p = value.find(',');
 	if (p != std::string::npos)
 		value[p] = '.';
-	double c = strtod(value.c_str(), NULL);
-	retval.coefficents.push_back(c);
+	double c = strtod(value.c_str(), nullptr);
+	retval.coefficients.push_back(c);
 	return true;
 }
 
@@ -398,14 +485,90 @@ static bool isHex(
 	return true;
 }
 
-int LoggerPassportCollection::parse(
+int LoggerPassportCollection::parseJson(
+        time_t modificationTime,
+        const std::string &name, ///< optional resource name
+        std::istream &strm
+)
+{
+    rapidjson::Document doc;
+    rapidjson::Document::AllocatorType &allocator(doc.GetAllocator());
+    rapidjson::IStreamWrapper rStream(strm);
+    doc.ParseStream(rStream);
+    if (!doc.IsArray())
+        return ERR_LOGGER_PASSPORT_INVALID_JSON;
+
+    for (int i = 0; i < doc.Size(); i++) {
+        LoggerPassport item;
+        rapidjson::Value &jPlume = doc[i];
+        if (!jPlume.IsObject())
+            return ERR_LOGGER_PASSPORT_INVALID_JSON;
+        if (jPlume.HasMember(JSON_PASSPORT_NAMES[JSON_MODIFIED])) {
+            rapidjson::Value &jModified = jPlume[JSON_PASSPORT_NAMES[JSON_MODIFIED]];
+            if (jModified.IsUint())
+                item.modificationTime = jModified.GetUint();
+        }
+        if (jPlume.HasMember(JSON_PASSPORT_NAMES[JSON_NAME])) {
+            rapidjson::Value &jName = jPlume[JSON_PASSPORT_NAMES[JSON_NAME]];
+            if (jName.IsString())
+                item.name = jName.GetString();
+        }
+        if (jPlume.HasMember(JSON_PASSPORT_NAMES[JSON_ID])) {
+            rapidjson::Value &jId = jPlume[JSON_PASSPORT_NAMES[JSON_ID]];
+            if (jId.IsObject()) {
+                if (jId.HasMember(JSON_PASSPORT_NAMES[JSON_ID_PLUME])) {
+                    rapidjson::Value &jIdPlume = jId[JSON_PASSPORT_NAMES[JSON_ID_PLUME]];
+                    if (jIdPlume.IsUint())
+                        item.id.plume = jIdPlume.GetUint();
+                }
+                if (jId.HasMember(JSON_PASSPORT_NAMES[JSON_ID_YEAR])) {
+                    rapidjson::Value &jIdYear = jId[JSON_PASSPORT_NAMES[JSON_ID_YEAR]];
+                    if (jIdYear.IsUint())
+                        item.id.year = jIdYear.GetUint();
+                }
+            }
+        }
+        // sensors
+        if (jPlume.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS])) {
+            rapidjson::Value &jSensors = jPlume[JSON_PASSPORT_NAMES[JSON_SENSORS]];
+            if (jSensors.IsArray()) {
+                for (int s = 0; s < jSensors.Size(); s++) {
+                    rapidjson::Value &jSensor = jSensors[s];
+                    SensorCoefficients sensor;
+                    if (jSensor.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS_MAC])) {
+                        rapidjson::Value &jSensorMac = jSensor[JSON_PASSPORT_NAMES[JSON_SENSORS_MAC]];
+                        if (jSensorMac.IsString()) {
+                            sensor.mac.set(jSensorMac.GetString());
+                        }
+                    }
+                    if (jSensor.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS])) {
+                        rapidjson::Value &jSensorCoefficients = jSensor[JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS]];
+                        if (jSensorCoefficients.IsArray()) {
+                            for (int c = 0; c < jSensorCoefficients.Size(); c++) {
+                                rapidjson::Value &jCoefficient = jSensorCoefficients[c];
+                                if (jCoefficient.IsDouble()) {
+                                    sensor.coefficients.push_back(jCoefficient.GetDouble());
+                                }
+                            }
+                        }
+                    }
+                    item.sensors.push_back(sensor);
+                }
+            }
+        }
+        this->push(item);
+    }
+    return 0;
+}
+
+int LoggerPassportCollection::parseText(
 	time_t modificationTime,
     const std::string &name, ///< optional resource name
 	std::istream &strm
 )
 {
 	PASSPORT_TOKEN token = TOK_YEAR_PLUME;
-	LoggerPassportItem item;
+	LoggerPassport item;
 	SensorCoefficients sensor;
 
 	int r = 0;
@@ -434,16 +597,14 @@ int LoggerPassportCollection::parse(
 			}
 			if (r)
 				push(item);
-			else {
-				if (!putYearPlume(item, value))
-					token = TOK_END;
-				else {
-					item.modificationTime = modificationTime;
-					item.name = name;     // optional resource name
-					token = TOK_MAC;
-					r++;
-				}
-			}
+            if (putYearPlume(item, value)) {
+                item.sensors.clear();
+                item.modificationTime = modificationTime;
+                item.name = name;     // optional resource name
+                token = TOK_MAC;
+                r++;
+            } else
+                token = TOK_END;
 			break;
 		case TOK_MAC:
 			if (sensorCount) {
@@ -455,7 +616,7 @@ int LoggerPassportCollection::parse(
 				sensorCount++;
 				token = TOK_COEFF;
 			}
-			sensor.coefficents.clear();
+			sensor.coefficients.clear();
 			break;
 		case TOK_COEFF:
 			if (!putCoefficient(sensor, value))
@@ -475,11 +636,31 @@ int LoggerPassportCollection::parse(
 
 int LoggerPassportCollection::loadString(
 	time_t modificationTime,
-	const std::string &value
+	const std::string &value,
+    const bool isJson
 )
 {
 	std::stringstream ss(value);
-	return parse(modificationTime, noname, ss);
+    if (isJson)
+        return parseJson(modificationTime, noname, ss);
+    else
+	    return parseText(modificationTime, noname, ss);
+}
+
+/**
+ * @brief List files in the directory
+ * @param retval file list
+ * @param path Initial path. List all subdirectories in specified path.
+ * @param fileSuffix Search files with file extension e.g. ".txt"
+ * @return count of files, <0- error
+ */
+static size_t listDir(
+        std::vector<std::string> &retval,
+        const std::string &path,
+        const std::string &fileSuffix
+)
+{
+    return listFiles(&retval, path, fileSuffix, 1);
 }
 
 int LoggerPassportCollection::loadFile(
@@ -498,18 +679,13 @@ int LoggerPassportCollection::loadFile(
 		f.close();
 		return 0;
 	}
-	int r = parse(m, fileName, f);
+    int r;
+    if (fileIsJSON(fileName))
+	    r = parseJson(m, fileName, f);
+    else
+        r = parseText(m, fileName, f);
 	f.close();
 	return r;
-}
-
-size_t LoggerPassportCollection::listDir(
-	std::vector<std::string> &retval,
-	const std::string &path,
-	const std::string &fileSuffix
-)
-{
-	return listFiles(&retval, path, fileSuffix, 1);
 }
 
 int LoggerPassportCollection::loadFiles(
@@ -549,11 +725,11 @@ LoggerPassportMemory::LoggerPassportMemory(const LoggerPassportMemory& value)
 	return values.size();
  }
 
-const LoggerPassportItem *LoggerPassportMemory::get(const LoggerPlumeId &id) const 
+const LoggerPassport *LoggerPassportMemory::get(const LoggerPlumeId &id) const
 {
-	std::map <LoggerPlumeId, LoggerPassportItem>::const_iterator it(values.find(id));
+	std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.find(id));
 	if (it == values.end())
-		return NULL;
+		return nullptr;
 	return &it->second;
 }
 
@@ -561,7 +737,7 @@ size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offs
 {
 	size_t ofs = 0;
 	size_t cnt = 0;
-	for (std::map <LoggerPlumeId, LoggerPassportItem>::const_iterator it(values.begin()); it != values.end(); it++) {
+	for (std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.begin()); it != values.end(); it++) {
 		ofs++;
 		if (ofs <= offset)
 			continue;
@@ -575,7 +751,7 @@ size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offs
 	return cnt;
 }
 
-void LoggerPassportMemory::push(LoggerPassportItem &value)
+void LoggerPassportMemory::push(LoggerPassport &value)
 {
 	values[value.id] = value;
 }
