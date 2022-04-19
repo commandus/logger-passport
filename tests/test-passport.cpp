@@ -126,8 +126,20 @@ static void testParseJson()
     delete c2;
 }
 
+static void testSaveText()
+{
+    LoggerPassportCollection *c = new LoggerPassportMemory();
+    c->loadString(time(nullptr), passports, false);
+
+    std::string text = c->toString();
+    std::cout << std::endl;
+    std::cout << text << std::endl;
+    std::cout << std::endl;
+}
+
 int main(int argc, char **argv)
 {
     testParseText();
     testParseJson();
+    testSaveText();
 }

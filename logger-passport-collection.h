@@ -47,10 +47,7 @@ public:
 
     void set(const std::string &value);
 
-    std::string toJsonString() const;
     std::string toString() const;
-    std::string toTableString() const;
-    std::string sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const;
 };
 
 /**
@@ -187,7 +184,11 @@ class LoggerPassportCollection {
          * @param value passport
          */
 		virtual void push(LoggerPassport &value) = 0;
-
+        /**
+         * Remove passport form the storage
+         * @param id plume identifier
+         */
+        virtual void remove(const LoggerPlumeId &id) = 0;
         /**
          * Parse JSON file stream
          * @param modificationTime file last modification time, unix epoch in seconds
@@ -237,6 +238,7 @@ class LoggerPassportCollection {
         std::string toString() const;
         std::string toTableString() const;
         std::string sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const;
+
         // Helper overload routines
         /**
          * Get passport by integers
@@ -245,6 +247,11 @@ class LoggerPassportCollection {
          * @return pointer to the passport ot NULL
          */
         const LoggerPassport *get(int serialNo, int year) const;
+        /**
+         * Remove passport form the storage
+         * @param id plume identifier
+         */
+        void remove(int serialNo, int year);
 };
 
 /**
@@ -260,6 +267,7 @@ class LoggerPassportMemory: public LoggerPassportCollection {
 		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const  override;
 		const LoggerPassport *get(const LoggerPlumeId &id) const override;
 		void push(LoggerPassport &value) override;
+        void remove(const LoggerPlumeId &id) override;
 };
 
 #endif
