@@ -61,21 +61,6 @@ std::string SensorMAC::toString() const
     return ss.str();
 }
 
-std::string SensorMAC::toJsonString() const
-{
-    return toString();
-}
-
-std::string SensorMAC::toTableString() const
-{
-    return toString();
-}
-
-std::string SensorMAC::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
-{
-    return toString();
-}
-
 bool SensorMAC::operator==(const SensorMAC &another) const
 {
     return mac.u == another.mac.u;
@@ -262,7 +247,7 @@ std::string LoggerPlumeId::toJsonString() const
 std::string LoggerPlumeId::toString() const
 {
 	std::stringstream ss;
-	ss << plume << "-" << year;
+	ss << "N" << year << "-" << plume;
 	return ss.str();
 }
 
@@ -329,7 +314,18 @@ std::string LoggerPassport::toJsonString() const
 std::string LoggerPassport::toString() const
 {
 	std::stringstream ss;
-	ss << id.toString() << " " << modificationTime;
+	ss << id.toString() << std::endl;
+    for (std::vector<SensorCoefficients>::const_iterator it(sensors.begin()); it != sensors.end(); it++) {
+        ss << it->mac.toString();
+        int c = 0;
+        for (std::vector<double>::const_iterator itc(it->coefficients.begin()); itc != it->coefficients.end(); itc++) {
+            if (c && (c % 3 == 0))
+                ss << std::endl << "\t\t";
+            ss << "\t"  << std::fixed << std::setprecision(5) << *itc;
+            c++;
+        }
+        ss << std::endl;
+    }
 	return ss.str();
 }
 
@@ -368,7 +364,16 @@ std::string LoggerPassportCollection::toJsonString() const
 
 std::string LoggerPassportCollection::toString() const
 {
-	return toJsonString();
+    std::vector<LoggerPlumeId> plumeIds;
+    size_t cnt = count();
+    ids(plumeIds, 0, cnt);
+    std::stringstream ss;
+    for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
+        const LoggerPassport *p = get(*it);
+        if (p)
+            ss << p->toString();
+    }
+	return ss.str();
 }
 
 std::string LoggerPassportCollection::toTableString() const
@@ -384,6 +389,18 @@ std::string LoggerPassportCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outp
 const LoggerPassport *LoggerPassportCollection::get(int serialNo, int year) const
 {
     return get(LoggerPlumeId(serialNo, year));
+}
+
+/**
+ * Remove passport form the storage
+ * @param id plume identifier
+ */
+void LoggerPassportCollection::remove(
+    int serialNo,
+    int year
+)
+{
+    remove(LoggerPlumeId(serialNo, year));
 }
 
 static void skipComments(
@@ -754,4 +771,13 @@ size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offs
 void LoggerPassportMemory::push(LoggerPassport &value)
 {
 	values[value.id] = value;
+}
+
+void LoggerPassportMemory::remove(
+    const LoggerPlumeId &id
+)
+{
+    std::map <LoggerPlumeId, LoggerPassport>::iterator it(values.find(id));
+    if (it != values.end())
+        values.erase(it);
 }
