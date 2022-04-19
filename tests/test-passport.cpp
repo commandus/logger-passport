@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 #include <cmath>
 #include "logger-passport-collection.h"
@@ -135,11 +136,52 @@ static void testSaveText()
     std::cout << std::endl;
     std::cout << text << std::endl;
     std::cout << std::endl;
+
+    delete c;
 }
+
+static void testTemperature()
+{
+    LoggerPassportCollection *c = new LoggerPassportMemory();
+    c->loadString(time(nullptr), passports, false);
+
+    std::cout << std::endl;
+    for (int t = -30; t < 30; t++) {
+        for (auto it(c->get(1, 6)->sensors.begin()); it != c->get(1, 6)->sensors.end(); it++) {
+            double t1 = c->calc(1, 6, it->mac.mac.u, t * 1.0);
+            std::cout << it->mac.toString() << std::fixed << std::setprecision(5) << " "
+                << (double) t << " " << t1
+                << " diff: " << fabs(t - t1)
+                << std::endl;
+        }
+    }
+    std::cout << std::endl;
+    delete c;
+}
+
+static void testTemperature1()
+{
+    LoggerPassportCollection *c = new LoggerPassportMemory();
+    c->loadString(time(nullptr), passports, false);
+
+    std::cout << std::endl;
+    double t0 = 29.0;
+    double t1 = c->calc(1, 6, 0x28c4902f0200004f, t0);
+    std::cout << "28c4902f0200004f" << std::fixed << std::setprecision(5) << " "
+              << t0 << " " << t1
+              << " diff: " << fabs(t0 - t1)
+              << std::endl;
+    std::cout << std::endl;
+    delete c;
+}
+
+
 
 int main(int argc, char **argv)
 {
     testParseText();
     testParseJson();
     testSaveText();
+    testTemperature();
+    testTemperature1();
 }

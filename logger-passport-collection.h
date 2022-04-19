@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <mutex>
 
 /**
  * @brief Each sensor have 8 bytes long MAC address
@@ -74,7 +75,7 @@ public:
     std::string toString() const;
     std::string toTableString() const;
     std::string sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const;
-    double calc(double temperature);
+    double calc(double temperature) const;
 };
 
 /**
@@ -180,6 +181,14 @@ class LoggerPassportCollection {
          */
 		virtual const LoggerPassport *get(const LoggerPlumeId &id) const = 0;
         /**
+         * Return pointer to the sensor
+         * @param serialNo plume serial number
+         * @param year yeat of production
+         * @param mac sensor MAC address
+         * @return NULL if not found
+         */
+        const SensorCoefficients *get(int serialNo, int year, uint64_t mac) const;
+        /**
          * Add passport to the storage
          * @param value passport
          */
@@ -189,6 +198,10 @@ class LoggerPassportCollection {
          * @param id plume identifier
          */
         virtual void remove(const LoggerPlumeId &id) = 0;
+        /**
+         * Clear storage
+         */
+        virtual void clear() = 0;
         /**
          * Parse JSON file stream
          * @param modificationTime file last modification time, unix epoch in seconds
@@ -252,22 +265,35 @@ class LoggerPassportCollection {
          * @param id plume identifier
          */
         void remove(int serialNo, int year);
+
+        /**
+         * Calculate temperature
+         * @param serialNo plume serial number starting with 1
+         * @param year plume year - 2000
+         * @param sensor MAC address
+         * @param temperature temperature
+         * @return temperature
+         */
+        double calc(int serialNo, int year, uint64_t sensor, double temperature) const;
 };
 
 /**
  * @brief in-memory implementation of the LoggerPassportCollection abstract class
  */
 class LoggerPassportMemory: public LoggerPassportCollection {
+    private:
+        mutable std::mutex mapMutex;
 	public:
 		std::map <LoggerPlumeId, LoggerPassport> values;
 		LoggerPassportMemory();
 		LoggerPassportMemory(const LoggerPassportMemory& value);
 		virtual ~LoggerPassportMemory();
 		size_t count() const override;
-		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const  override;
+		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const override;
 		const LoggerPassport *get(const LoggerPlumeId &id) const override;
 		void push(LoggerPassport &value) override;
         void remove(const LoggerPlumeId &id) override;
+        void clear() override;
 };
 
 #endif
