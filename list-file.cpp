@@ -125,9 +125,10 @@ bool isOrdinalFile(
 
 /**
  * Return list of files in specified path
- * @param path
+ * @param retval can be NULL (count files)
+ * @param path path
+ * @param suffix if "", any files
  * @param flags 0- as is, 1- full path, 2- relative (remove parent path)
- * @param retval can be NULL
  * @return count files
  * FreeBSD fts.h fts_*()
  */
@@ -166,7 +167,7 @@ size_t listFiles
 				case FTS_F:
 					{
 						std::string s(child->fts_name);
-						if (s.find(suffix) != std::string::npos)
+						if (suffix.empty() || (s.find(suffix) != std::string::npos))
 						{
 							count++;
 							if (retval) {

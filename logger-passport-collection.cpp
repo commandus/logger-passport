@@ -156,7 +156,7 @@ std::string SensorCoefficients::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputForm
  */
 double SensorCoefficients::calc(
     double temperature
-)
+) const
 {
     int sz = coefficients.size();
     int t = temperature;
@@ -167,15 +167,13 @@ double SensorCoefficients::calc(
             return coefficients[0] * temperature + coefficients[1] + coefficients[2] * coefficients[2] * temperature;
         case 9:
             if (t < -3)
-                return coefficients[0] * temperature + coefficients[1] + coefficients[2] * coefficients[2] * temperature;
+                return coefficients[0] + coefficients[1] * temperature +  + coefficients[2] * coefficients[2] * temperature;
             if (t <= 3)
-                return coefficients[3] * temperature + coefficients[4] + coefficients[5] * coefficients[5] * temperature;
+                return coefficients[3] + coefficients[4] * temperature +  + coefficients[5] * coefficients[5] * temperature;;
             if (t <= 30)
-                return coefficients[6] * temperature + coefficients[7] + coefficients[8] * coefficients[8] * temperature;
-            return temperature;
-        default:
-            return temperature;
+                return coefficients[6] + coefficients[7] * temperature +  + coefficients[8] * coefficients[8] * temperature;;
     }
+    return temperature;
 }
 
 // -------- LoggerPlumeId --------
@@ -373,6 +371,7 @@ std::string LoggerPassportCollection::toString() const
         if (p)
             ss << p->toString();
     }
+    ss << "NEND" << std::endl;
 	return ss.str();
 }
 
@@ -391,6 +390,18 @@ const LoggerPassport *LoggerPassportCollection::get(int serialNo, int year) cons
     return get(LoggerPlumeId(serialNo, year));
 }
 
+const SensorCoefficients *LoggerPassportCollection::get(int serialNo, int year, uint64_t mac) const
+{
+    const LoggerPassport *p = get(LoggerPlumeId(serialNo, year));
+    if (!p)
+        return nullptr;
+    for (std::vector<SensorCoefficients>::const_iterator it(p->sensors.begin()); it != p->sensors.end(); it++) {
+        if (it->mac == mac)
+            return &*it;
+    }
+    return nullptr;
+}
+
 /**
  * Remove passport form the storage
  * @param id plume identifier
@@ -401,6 +412,19 @@ void LoggerPassportCollection::remove(
 )
 {
     remove(LoggerPlumeId(serialNo, year));
+}
+
+double LoggerPassportCollection::calc(
+    int serialNo,
+    int year,
+    uint64_t sensor,
+    double temperature
+) const
+{
+    const SensorCoefficients *c = get(serialNo, year, sensor);
+    if (c)
+        return c->calc(temperature);
+    return temperature;
 }
 
 static void skipComments(
@@ -744,17 +768,21 @@ LoggerPassportMemory::LoggerPassportMemory(const LoggerPassportMemory& value)
 
 const LoggerPassport *LoggerPassportMemory::get(const LoggerPlumeId &id) const
 {
+    if (!mapMutex.try_lock())
+        return nullptr;
 	std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.find(id));
+    mapMutex.unlock();
 	if (it == values.end())
 		return nullptr;
 	return &it->second;
 }
 
-size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const 
+size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const
 {
 	size_t ofs = 0;
 	size_t cnt = 0;
-	for (std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.begin()); it != values.end(); it++) {
+    mapMutex.lock();
+    for (std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.begin()); it != values.end(); it++) {
 		ofs++;
 		if (ofs <= offset)
 			continue;
@@ -765,19 +793,31 @@ size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offs
 		}
 		retval.push_back(it->first);
 	}
+    mapMutex.unlock();
 	return cnt;
 }
 
 void LoggerPassportMemory::push(LoggerPassport &value)
 {
+    mapMutex.lock();
 	values[value.id] = value;
+    mapMutex.unlock();
 }
 
 void LoggerPassportMemory::remove(
     const LoggerPlumeId &id
 )
 {
+    mapMutex.lock();
     std::map <LoggerPlumeId, LoggerPassport>::iterator it(values.find(id));
     if (it != values.end())
         values.erase(it);
+    mapMutex.unlock();
+}
+
+void LoggerPassportMemory::clear()
+{
+    mapMutex.lock();
+    values.clear();
+    mapMutex.unlock();
 }
