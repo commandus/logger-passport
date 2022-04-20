@@ -3,7 +3,7 @@
  */
 
 #include "logger-passport.h"
-#include "logger-passport-collection.h"
+#include "logger-plume-collection.h"
 #include "filewatch.hpp"
 
 #define  MODULE_CODE    11
@@ -11,7 +11,7 @@
 class PassportServiceConfig {
 public:
     // service descriptor
-    LoggerPassportCollection *passports;
+    LoggerPlumeCollection *passports;
     // watcher
     filewatch::FileWatch<std::string> *watcher;
     // log callback
@@ -66,13 +66,15 @@ void PassportServiceConfig::reload(
 }
 
 void PassportServiceConfig::load() {
+    this->passports->startModification();
     this->passports->clear();
     this->passports->loadFile(this->passportDir, "");
+    this->passports->finishModification();
 }
 
 /**
  * Load passports from the directory. Listen for changes in the directory
- * @param config return pointer to LoggerPassportCollection if success
+ * @param config return pointer to LoggerPlumeCollection if success
  * @return descriptor
  */
 void *startPassportDirectory(
@@ -81,7 +83,7 @@ void *startPassportDirectory(
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
-    config->passports = new LoggerPassportMemory();
+    config->passports = new LoggerPlumeMemory();
     config->watcher = new filewatch::FileWatch<std::string>(config->passportDir,
        [config](const std::string &path, const filewatch::Event changeType) {
            config->reload(path, changeType);
@@ -93,7 +95,7 @@ void *startPassportDirectory(
 
 /**
  * Free resources
- * @param config set pointer to LoggerPassportCollection to null
+ * @param config set pointer to LoggerPlumeCollection to null
  * @return true success
  */
 void stopPassportDirectory(
@@ -111,7 +113,7 @@ void stopPassportDirectory(
     }
 }
 
-double calcTemparature(
+double calcTemperature(
     void *descriptor,
     int serialNo,
     int year,
@@ -123,4 +125,23 @@ double calcTemparature(
         return value;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
     config->passports->calc(serialNo, year, sensor, value);
+}
+
+/**
+ * Calc temperature
+ * @param descriptor passport collection descriptor
+ * @param mac sensor MAC address
+ * @param value raw temperature
+ * @return temperature
+ */
+double calcTemperature(
+    void *descriptor,
+    uint64_t mac,
+    double value
+)
+{
+    if (!descriptor)
+        return value;
+    PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    config->passports->calc(mac, value);
 }

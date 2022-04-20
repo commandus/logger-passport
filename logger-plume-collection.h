@@ -103,7 +103,7 @@ class LoggerPlumeId {
 /**
  * @brief Each sensors plume have logger passport with coefficients for each sensor to spline raw temperature data.
  */
-class LoggerPassport {
+class LoggerPlume {
 	public:
         /**
          * Scanning multiple files can cause old files collision. To resolve it, each record have
@@ -124,10 +124,10 @@ class LoggerPassport {
          */
         std::string name;
 
-		LoggerPassport();
-		LoggerPassport(const LoggerPassport& value);
-		LoggerPassport(time_t aModificationTime);
-		virtual ~LoggerPassport();
+		LoggerPlume();
+		LoggerPlume(const LoggerPlume& value);
+		LoggerPlume(time_t aModificationTime);
+		virtual ~LoggerPlume();
 		std::string toJsonString() const;
         std::string toString() const;
         std::string toTableString() const;
@@ -146,12 +146,12 @@ typedef enum {
 } PASSPORT_TOKEN;
 
 /**
- * LoggerPassportCollection is collection of plumes.
+ * LoggerPlumeCollection is collection of plumes.
  * Plumes are loaded from files or streams.
  * It parses passport files in two formats: text files or JSON array.
  * @brief abstract class have virtual methods relates to the storage where collection resides.
  */
-class LoggerPassportCollection {
+class LoggerPlumeCollection {
 	private:
         /**
          * File parser routine return next token
@@ -179,7 +179,7 @@ class LoggerPassportCollection {
          * @param id plume identifier
          * @return pointer to the passport if exists, NULL if not found
          */
-		virtual const LoggerPassport *get(const LoggerPlumeId &id) const = 0;
+		virtual const LoggerPlume *get(const LoggerPlumeId &id) const = 0;
         /**
          * Return pointer to the sensor
          * @param serialNo plume serial number
@@ -192,7 +192,7 @@ class LoggerPassportCollection {
          * Add passport to the storage
          * @param value passport
          */
-		virtual void push(LoggerPassport &value) = 0;
+		virtual void push(LoggerPlume &value) = 0;
         /**
          * Remove passport form the storage
          * @param id plume identifier
@@ -259,7 +259,7 @@ class LoggerPassportCollection {
          * @param year year 00..99 minus 2000
          * @return pointer to the passport ot NULL
          */
-        const LoggerPassport *get(int serialNo, int year) const;
+        const LoggerPlume *get(int serialNo, int year) const;
         /**
          * Remove passport form the storage
          * @param id plume identifier
@@ -278,20 +278,20 @@ class LoggerPassportCollection {
 };
 
 /**
- * @brief in-memory implementation of the LoggerPassportCollection abstract class
+ * @brief in-memory implementation of the LoggerPlumeCollection abstract class
  */
-class LoggerPassportMemory: public LoggerPassportCollection {
+class LoggerPlumeMemory: public LoggerPlumeCollection {
     private:
         mutable std::mutex mapMutex;
 	public:
-		std::map <LoggerPlumeId, LoggerPassport> values;
-		LoggerPassportMemory();
-		LoggerPassportMemory(const LoggerPassportMemory& value);
-		virtual ~LoggerPassportMemory();
+		std::map <LoggerPlumeId, LoggerPlume> values;
+		LoggerPlumeMemory();
+		LoggerPlumeMemory(const LoggerPlumeMemory& value);
+		virtual ~LoggerPlumeMemory();
 		size_t count() const override;
 		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const override;
-		const LoggerPassport *get(const LoggerPlumeId &id) const override;
-		void push(LoggerPassport &value) override;
+		const LoggerPlume *get(const LoggerPlumeId &id) const override;
+		void push(LoggerPlume &value) override;
         void remove(const LoggerPlumeId &id) override;
         void clear() override;
 };

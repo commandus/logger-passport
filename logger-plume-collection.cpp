@@ -9,7 +9,7 @@
 #include "rapidjson/stringbuffer.h"
 #include <rapidjson/istreamwrapper.h>
 
-#include "logger-passport-collection.h"
+#include "logger-plume-collection.h"
 #include "list-file.h"
 #include "errlist.h"
 
@@ -110,9 +110,17 @@ SensorMAC &SensorMAC::operator=(const std::string &value)
 std::string SensorCoefficients::toString() const
 {
     std::stringstream ss;
-    ss << mac.toString() << " ";
+    ss << mac.toString();
+    bool isFirstLine = true;
     for (auto it(coefficients.begin()); it != coefficients.end(); it++) {
-        ss << std::fixed << std::setprecision(10) << *it << " ";
+        if (isFirstLine)
+            isFirstLine = false;
+        else
+            ss << "\t\t"; // add extra tab
+        for (auto it2(it->begin()); it2 != it->end(); it2++) {
+            ss << "\t" << std::fixed << std::setprecision(5) << *it2;
+        }
+        ss << std::endl;
     }
     return ss.str();
 }
@@ -128,7 +136,17 @@ std::string SensorCoefficients::toJsonString() const
             isFirst = false;
         else
             ss << COMMA;
-        ss << std::fixed << std::setprecision(5) << *it;
+
+        ss << "[";
+        bool isFirst2 = true;
+        for (auto it2(it->begin()); it2 != it->end(); it2++) {
+            if (isFirst2)
+                isFirst2 = false;
+            else
+                ss << COMMA;
+            ss << std::fixed << std::setprecision(5) << *it2;
+        }
+        ss << "]";
     }
     ss << "]}";
     return ss.str();
@@ -158,20 +176,44 @@ double SensorCoefficients::calc(
     double temperature
 ) const
 {
-    int sz = coefficients.size();
+    int idx = 0;
     int t = temperature;
-    switch (sz) {
+    int sz = coefficients.size();
+    if (sz == 3) {
+        if (t < -3)
+            idx = 0;
+        else if (t <= 3)
+            idx = 1;
+        else if (t <= 30)
+            idx = 2;
+        else
+            return temperature;
+    } else {
+        if (sz >= 1)
+            idx = 0;
+        else
+            return temperature;
+    }
+    int sz2 = coefficients[idx].size();
+    switch (sz2) {
+        case 0:
+        case 1:
+            break;
         case 2:
-            return coefficients[0] * temperature + coefficients[1];
-        case 3:
-            return coefficients[0] * temperature + coefficients[1] + coefficients[2] * coefficients[2] * temperature;
-        case 9:
-            if (t < -3)
-                return coefficients[0] + coefficients[1] * temperature +  + coefficients[2] * coefficients[2] * temperature;
-            if (t <= 3)
-                return coefficients[3] + coefficients[4] * temperature +  + coefficients[5] * coefficients[5] * temperature;;
-            if (t <= 30)
-                return coefficients[6] + coefficients[7] * temperature +  + coefficients[8] * coefficients[8] * temperature;;
+            return coefficients[idx][0] * temperature + coefficients[idx][1];
+        default:    // 3
+        {
+            double x = 1.0;
+            double r = 0.0;
+            for (int i = 0; i < sz2; i++) {
+                r += coefficients[idx][i] * x;
+                if (i == 0)
+                    x = temperature;
+                else
+                    x *= x;
+            }
+            return r;
+        }
     }
     return temperature;
 }
@@ -259,24 +301,24 @@ std::string LoggerPlumeId::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) c
 	return toString();
 }
 
-// -------- LoggerPassport --------
+// -------- LoggerPlume --------
 
 const static std::string noname;
 
-LoggerPassport::LoggerPassport()
+LoggerPlume::LoggerPlume()
 	: modificationTime(0), name(noname)
 {
 }
 
-LoggerPassport::LoggerPassport(
-	const LoggerPassport& value
+LoggerPlume::LoggerPlume(
+	const LoggerPlume& value
 )
 	: modificationTime(value.modificationTime), id(value.id), name(value.name)
 {
 
 }
 
-LoggerPassport::LoggerPassport(
+LoggerPlume::LoggerPlume(
 	time_t aModificationTime
 )
 	: modificationTime(aModificationTime), name(noname)
@@ -284,12 +326,12 @@ LoggerPassport::LoggerPassport(
 
 }
 
-LoggerPassport::~LoggerPassport()
+LoggerPlume::~LoggerPlume()
 {
 
 }
 
-std::string LoggerPassport::toJsonString() const
+std::string LoggerPlume::toJsonString() const
 {
 	std::stringstream ss;
 	ss << "{"
@@ -297,49 +339,41 @@ std::string LoggerPassport::toJsonString() const
 		<< ", \"" << JSON_PASSPORT_NAMES[JSON_NAME] << "\": \"" << name
 		<< "\", \"" << JSON_PASSPORT_NAMES[JSON_ID] << "\": " << id.toJsonString()
 		<< ", \""<< JSON_PASSPORT_NAMES[JSON_SENSORS] << "\": [";
-	bool isFirst = true;
-	for (auto it(sensors.begin()); it != sensors.end(); it++) {
-		if (isFirst)
-			isFirst = false;
-		else
-			ss << COMMA;
-		ss << it->toJsonString();
-	}
+    bool isFirst = true;
+    for (auto it(sensors.begin()); it != sensors.end(); it++) {
+        if (isFirst)
+            isFirst = false;
+        else
+            ss << COMMA;
+        ss << it->toJsonString();
+    }
 	ss << "]}";
 	return ss.str();
 }
 
-std::string LoggerPassport::toString() const
+std::string LoggerPlume::toString() const
 {
 	std::stringstream ss;
 	ss << id.toString() << std::endl;
     for (std::vector<SensorCoefficients>::const_iterator it(sensors.begin()); it != sensors.end(); it++) {
-        ss << it->mac.toString();
-        int c = 0;
-        for (std::vector<double>::const_iterator itc(it->coefficients.begin()); itc != it->coefficients.end(); itc++) {
-            if (c && (c % 3 == 0))
-                ss << std::endl << "\t\t";
-            ss << "\t"  << std::fixed << std::setprecision(5) << *itc;
-            c++;
-        }
-        ss << std::endl;
+        ss << it->toString();
     }
 	return ss.str();
 }
 
-std::string LoggerPassport::toTableString() const
+std::string LoggerPlume::toTableString() const
 {
 	return toString();
 }
 
-std::string LoggerPassport::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
+std::string LoggerPlume::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
 {
 	return toString();
 }
 
-// -------- LoggerPassportCollection --------
+// -------- LoggerPlumeCollection --------
 
-std::string LoggerPassportCollection::toJsonString() const
+std::string LoggerPlumeCollection::toJsonString() const
 {
 	std::vector<LoggerPlumeId> plumeIds;
 	size_t cnt = ids(plumeIds, 0, 0);
@@ -347,7 +381,7 @@ std::string LoggerPassportCollection::toJsonString() const
 	ss << "[";
 	bool firstItem = true;
 	for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
-		const LoggerPassport *v = get(*it);
+		const LoggerPlume *v = get(*it);
 		if (!v)
 			continue;
 		if (firstItem)
@@ -360,14 +394,14 @@ std::string LoggerPassportCollection::toJsonString() const
 	return ss.str();
 }
 
-std::string LoggerPassportCollection::toString() const
+std::string LoggerPlumeCollection::toString() const
 {
     std::vector<LoggerPlumeId> plumeIds;
     size_t cnt = count();
     ids(plumeIds, 0, cnt);
     std::stringstream ss;
     for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
-        const LoggerPassport *p = get(*it);
+        const LoggerPlume *p = get(*it);
         if (p)
             ss << p->toString();
     }
@@ -375,24 +409,24 @@ std::string LoggerPassportCollection::toString() const
 	return ss.str();
 }
 
-std::string LoggerPassportCollection::toTableString() const
+std::string LoggerPlumeCollection::toTableString() const
 {
 	return toJsonString();
 }
 
-std::string LoggerPassportCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
+std::string LoggerPlumeCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
 {
 	return toJsonString();
 }
 
-const LoggerPassport *LoggerPassportCollection::get(int serialNo, int year) const
+const LoggerPlume *LoggerPlumeCollection::get(int serialNo, int year) const
 {
     return get(LoggerPlumeId(serialNo, year));
 }
 
-const SensorCoefficients *LoggerPassportCollection::get(int serialNo, int year, uint64_t mac) const
+const SensorCoefficients *LoggerPlumeCollection::getSensor(int serialNo, int year, uint64_t mac) const
 {
-    const LoggerPassport *p = get(LoggerPlumeId(serialNo, year));
+    const LoggerPlume *p = get(LoggerPlumeId(serialNo, year));
     if (!p)
         return nullptr;
     for (std::vector<SensorCoefficients>::const_iterator it(p->sensors.begin()); it != p->sensors.end(); it++) {
@@ -406,7 +440,7 @@ const SensorCoefficients *LoggerPassportCollection::get(int serialNo, int year, 
  * Remove passport form the storage
  * @param id plume identifier
  */
-void LoggerPassportCollection::remove(
+void LoggerPlumeCollection::remove(
     int serialNo,
     int year
 )
@@ -414,14 +448,25 @@ void LoggerPassportCollection::remove(
     remove(LoggerPlumeId(serialNo, year));
 }
 
-double LoggerPassportCollection::calc(
+double LoggerPlumeCollection::calc(
     int serialNo,
     int year,
     uint64_t sensor,
     double temperature
 ) const
 {
-    const SensorCoefficients *c = get(serialNo, year, sensor);
+    const SensorCoefficients *c = getSensor(serialNo, year, sensor);
+    if (c)
+        return c->calc(temperature);
+    return temperature;
+}
+
+double LoggerPlumeCollection::calc(
+    uint64_t mac,
+    double temperature
+) const
+{
+    const SensorCoefficients *c = getSensor(mac);
     if (c)
         return c->calc(temperature);
     return temperature;
@@ -441,18 +486,31 @@ static void skipComments(
 	}
 }
 
-std::string LoggerPassportCollection::next(
+/**
+ * Return next token. retNewLine indicate is token at new line
+ * @param retNewLine return if token in a new line (coefficients in a new line means a new temperature range)
+ * @param strm
+ * @return token
+ */
+static std::string next(
+    bool &retNewLineBefore,
+    bool &retNewLineAfter,
 	std::istream& strm
 )
 {
+    retNewLineBefore = false;
+    retNewLineAfter = false;
 	std::stringstream ss;
 	char c;
 	// skip spaces
 	while (!strm.eof()) {
 		if (!strm.get(c))
 			break;
-		if (c <= 32)
-			continue;
+		if (c <= 32) {
+            if (c == 10)
+                retNewLineBefore = true;
+            continue;
+        }
 		if (c == '#')
 			skipComments(strm);
 		else
@@ -463,8 +521,11 @@ std::string LoggerPassportCollection::next(
 	while (!strm.eof()) {
 		if (!strm.get(c))
 			break;
-		if (c <= 32)
-			break;
+		if (c <= 32) {
+            if (c == 10)
+                retNewLineAfter = true;
+            break;
+        }
 		if (c == '#')
 			skipComments(strm);
 		else
@@ -474,7 +535,7 @@ std::string LoggerPassportCollection::next(
 }
 
 static bool putYearPlume(
-        LoggerPassport &retVal,
+        LoggerPlume &retVal,
         const std::string &value
 )
 {
@@ -510,7 +571,7 @@ static bool putCoefficient(
 	if (p != std::string::npos)
 		value[p] = '.';
 	double c = strtod(value.c_str(), nullptr);
-	retval.coefficients.push_back(c);
+    retval.coefficients.back().push_back(c);
 	return true;
 }
 
@@ -526,7 +587,7 @@ static bool isHex(
 	return true;
 }
 
-int LoggerPassportCollection::parseJson(
+int LoggerPlumeCollection::parseJson(
         time_t modificationTime,
         const std::string &name, ///< optional resource name
         std::istream &strm
@@ -540,7 +601,7 @@ int LoggerPassportCollection::parseJson(
         return ERR_LOGGER_PASSPORT_INVALID_JSON;
 
     for (int i = 0; i < doc.Size(); i++) {
-        LoggerPassport item;
+        LoggerPlume item;
         rapidjson::Value &jPlume = doc[i];
         if (!jPlume.IsObject())
             return ERR_LOGGER_PASSPORT_INVALID_JSON;
@@ -586,10 +647,18 @@ int LoggerPassportCollection::parseJson(
                         rapidjson::Value &jSensorCoefficients = jSensor[JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS]];
                         if (jSensorCoefficients.IsArray()) {
                             for (int c = 0; c < jSensorCoefficients.Size(); c++) {
-                                rapidjson::Value &jCoefficient = jSensorCoefficients[c];
-                                if (jCoefficient.IsDouble()) {
-                                    sensor.coefficients.push_back(jCoefficient.GetDouble());
+                                std::vector <double> a;
+                                sensor.coefficients.push_back(a);
+                                rapidjson::Value &jCoefficient1 = jSensorCoefficients[c];
+                                if (jCoefficient1.IsArray()) {
+                                    for (int c1 = 0; c1 < jCoefficient1.Size(); c1++) {
+                                        rapidjson::Value &jCoefficient2 = jCoefficient1[c1];
+                                        if (jCoefficient2.IsDouble()) {
+                                            sensor.coefficients.back().push_back(jCoefficient2.GetDouble());
+                                        }
+                                    }
                                 }
+                                rapidjson::Value &jCoefficient = jSensorCoefficients[c];
                             }
                         }
                     }
@@ -602,20 +671,24 @@ int LoggerPassportCollection::parseJson(
     return 0;
 }
 
-int LoggerPassportCollection::parseText(
+int LoggerPlumeCollection::parseText(
 	time_t modificationTime,
     const std::string &name, ///< optional resource name
 	std::istream &strm
 )
 {
 	PASSPORT_TOKEN token = TOK_YEAR_PLUME;
-	LoggerPassport item;
+	LoggerPlume item;
 	SensorCoefficients sensor;
 
 	int r = 0;
 	int sensorCount = 0;
+    
+    bool tokenAtNewLineAfterEarlier = false;
 	while (!strm.eof()) {
-		std::string value = next(strm);
+        bool tokenAtNewLineBefore;
+        bool tokenAtNewLineAfter;
+		std::string value = next(tokenAtNewLineBefore, tokenAtNewLineAfter, strm);
 		// fix
 		if (token == TOK_COEFF) {
 			if (value.size()) {
@@ -628,6 +701,12 @@ int LoggerPassportCollection::parseText(
 					}
 				}
 			}
+            if ((token == TOK_COEFF) && (tokenAtNewLineBefore || tokenAtNewLineAfterEarlier)) {
+                std::vector <double> v;
+                v.reserve(3);
+                sensor.coefficients.push_back(v);
+            }
+            tokenAtNewLineAfterEarlier = tokenAtNewLineAfter;
 		}
 		switch (token)
 		{
@@ -654,10 +733,16 @@ int LoggerPassportCollection::parseText(
 			if (!putMac(sensor, value))
 				token = TOK_END;
 			else {
+                // clear old ..
+                sensor.coefficients.clear();
+                // and reserve one polynomial
+                std::vector <double> v;
+                v.reserve(3);
+                sensor.coefficients.push_back(v);
 				sensorCount++;
+                tokenAtNewLineAfterEarlier = false;
 				token = TOK_COEFF;
 			}
-			sensor.coefficients.clear();
 			break;
 		case TOK_COEFF:
 			if (!putCoefficient(sensor, value))
@@ -675,7 +760,7 @@ int LoggerPassportCollection::parseText(
 	return r;
 }
 
-int LoggerPassportCollection::loadString(
+int LoggerPlumeCollection::loadString(
 	time_t modificationTime,
 	const std::string &value,
     const bool isJson
@@ -704,7 +789,7 @@ static size_t listDir(
     return listFiles(&retval, path, fileSuffix, 1);
 }
 
-int LoggerPassportCollection::loadFile(
+int LoggerPlumeCollection::loadFile(
 	const std::string &fileName,
 	const std::string &fileSuffix
 )
@@ -729,7 +814,7 @@ int LoggerPassportCollection::loadFile(
 	return r;
 }
 
-int LoggerPassportCollection::loadFiles(
+int LoggerPlumeCollection::loadFiles(
 	const std::vector<std::string> &fileNames,
 	const std::string &fileSuffix
 )
@@ -743,46 +828,52 @@ int LoggerPassportCollection::loadFiles(
 	return r;
 }
 
-// -------- LoggerPassportMemory --------
+// -------- LoggerPlumeMemory --------
 
-LoggerPassportMemory::LoggerPassportMemory()
+LoggerPlumeMemory::LoggerPlumeMemory()
 {
 
 }
 
-LoggerPassportMemory::LoggerPassportMemory(const LoggerPassportMemory& value)
+LoggerPlumeMemory::LoggerPlumeMemory(const LoggerPlumeMemory& value)
 	: values(value.values)
 {
 
 }
 
- LoggerPassportMemory::~LoggerPassportMemory()
+ LoggerPlumeMemory::~LoggerPlumeMemory()
  {
 
  }
 
- size_t LoggerPassportMemory::count() const
+ size_t LoggerPlumeMemory::count() const
  {
 	return values.size();
  }
 
-const LoggerPassport *LoggerPassportMemory::get(const LoggerPlumeId &id) const
+const LoggerPlume *LoggerPlumeMemory::get(const LoggerPlumeId &id) const
 {
     if (!mapMutex.try_lock())
         return nullptr;
-	std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.find(id));
+	std::map <LoggerPlumeId, LoggerPlume>::const_iterator it(values.find(id));
     mapMutex.unlock();
 	if (it == values.end())
 		return nullptr;
 	return &it->second;
 }
 
-size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const
+const SensorCoefficients *LoggerPlumeMemory::getSensor(
+    uint64_t mac
+) const
+{
+    return nullptr;
+}
+
+size_t LoggerPlumeMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const
 {
 	size_t ofs = 0;
 	size_t cnt = 0;
-    mapMutex.lock();
-    for (std::map <LoggerPlumeId, LoggerPassport>::const_iterator it(values.begin()); it != values.end(); it++) {
+    for (std::map <LoggerPlumeId, LoggerPlume>::const_iterator it(values.begin()); it != values.end(); it++) {
 		ofs++;
 		if (ofs <= offset)
 			continue;
@@ -793,31 +884,46 @@ size_t LoggerPassportMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offs
 		}
 		retval.push_back(it->first);
 	}
-    mapMutex.unlock();
 	return cnt;
 }
 
-void LoggerPassportMemory::push(LoggerPassport &value)
+void LoggerPlumeMemory::push(LoggerPlume &value)
 {
-    mapMutex.lock();
 	values[value.id] = value;
-    mapMutex.unlock();
 }
 
-void LoggerPassportMemory::remove(
+void LoggerPlumeMemory::remove(
     const LoggerPlumeId &id
 )
 {
-    mapMutex.lock();
-    std::map <LoggerPlumeId, LoggerPassport>::iterator it(values.find(id));
+    std::map <LoggerPlumeId, LoggerPlume>::iterator it(values.find(id));
     if (it != values.end())
-        values.erase(it);
-    mapMutex.unlock();
+        values.erase(it);\
 }
 
-void LoggerPassportMemory::clear()
+void LoggerPlumeMemory::clear()
+{
+    values.clear();
+    buildMacIndex();
+}
+
+void LoggerPlumeMemory::startModification()
 {
     mapMutex.lock();
-    values.clear();
+}
+
+void LoggerPlumeMemory::finishModification()
+{
     mapMutex.unlock();
+    buildMacIndex();
+}
+
+void LoggerPlumeMemory::buildMacIndex()
+{
+    macIndex.clear();
+    for (std::map <LoggerPlumeId, LoggerPlume>::const_iterator it(values.begin()); it != values.end(); it++) {
+        for (std::vector <SensorCoefficients>::const_iterator its(it->second.sensors.begin()); its != it->second.sensors.end(); its++) {
+            macIndex[its->mac.mac.u] = &*its;
+        }
+    }
 }

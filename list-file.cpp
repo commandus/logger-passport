@@ -148,6 +148,8 @@ size_t listFiles
 	} else {
 		pathlist[0] = (char *) path.c_str();
 	}
+    if (!pathlist[0])
+        return 0;
 	unsigned int parent_len = strlen(pathlist[0]) + 1;	///< Arggh. Remove '/' path delimiter(I mean it 'always' present). Not sure is it works fine. It's bad, I know.
 
     size_t count = 0;

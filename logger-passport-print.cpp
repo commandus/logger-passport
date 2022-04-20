@@ -6,13 +6,15 @@
  * MIT license
  */
 #include <string>
+#include <sstream>
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 
 #include "argtable3/argtable3.h"
 
-#include "logger-passport-collection.h"
+#include "logger-plume-collection.h"
 #include "errlist.h"
 
 const static std::string programName = "logger-passport-print";
@@ -33,6 +35,9 @@ public:
     std::vector<std::string> fileNames;         ///< file names
     LOGGER_INPUT_SOURCE mode;                   ///< LOGGER_INPUT_SRC_STDIN(0)- from stdin, LOGGER_INPUT_SRC_FILES(1)- from files
     LOGGER_OUTPUT_FORMAT outputFormat;          ///< default 0- JSON
+    bool calculate;                             ///< true- calculate temperature
+    double temperature;
+    std::vector<uint64_t> macs;
     int verbosity;                              ///< verbosity level
 
     LoggerPassportPrintConfiguration();
@@ -59,12 +64,16 @@ int parseCmd(
     struct arg_lit *a_stdin = arg_lit0("r", "read", "Read from stdin");
     struct arg_str *a_output_format = arg_str0("f", "format", "json|text|table|postgresql|mysql|firebird|sqlite", "Default json");
 
+    struct arg_dbl *a_calc = arg_dbl0("c", "calc", "<temperature>", "e.g. -12.3");
+    struct arg_str *a_macs = arg_strn("m", "mac", "<hex>", 0, 100, "calc MAC");
+
     struct arg_lit *a_verbosity = arg_litn("v", "verbose", 0, 3, "Set verbosity level");
     struct arg_lit *a_help = arg_lit0("?", "help", "Show this help");
     struct arg_end *a_end = arg_end(20);
 
     void *argtable[] = {
         a_filenames, a_stdin, a_output_format,
+        a_calc, a_macs,
         a_verbosity, a_help, a_end
     };
 
@@ -103,6 +112,15 @@ int parseCmd(
             config->mode = LOGGER_INPUT_SRC_FILES;
             if (config->fileNames.size() == 0)
                 nerrors++;
+        }
+
+        config->calculate = a_calc->count > 0;
+        if (config->calculate) {
+            config->temperature = *a_calc->dval;
+            for (int i = 0; i < a_macs->count; i++) {
+                uint64_t m = std::stoull(*a_macs[i].sval, 0, 16);
+                config->macs.push_back(m);
+            }
         }
     }
 
@@ -145,35 +163,41 @@ int main(int argc, char **argv)
     if (r != 0)
         printErrorAndExit(r);
 
-    LoggerPassportCollection *c = new LoggerPassportMemory();
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
 
     if (config.mode == LOGGER_INPUT_SRC_STDIN)
         c->parseText(time(NULL), "cin", std::cin);
     else
         c->loadFiles(config.fileNames, DEF_PASSPORT_FILE_SUFFIX);
     // printErrorAndExit(ERR_LOGGER_PASSPORT_INVALID_FORMAT);
-    if (config.verbosity) {
-        std::cerr << "Files:";
-        for (auto it(config.fileNames.begin()); it != config.fileNames.end(); it++) {
-            std::cerr << *it << std::endl;
-        }
-        std::cerr << std::endl;
-    }
-
     std::string s;
-
-    switch (config.outputFormat) {
-        case LOGGER_OUTPUT_FORMAT_JSON:
-            s = c->toJsonString();
-            break;
-        case LOGGER_OUTPUT_FORMAT_TEXT:
-            s = c->toString();
-            break;
-        case LOGGER_OUTPUT_FORMAT_TABLE:
-            s = c->toTableString();
-            break;
-        default: // LOGGER_OUTPUT_FORMAT_PG LOGGER_OUTPUT_FORMAT_MYSQL LOGGER_OUTPUT_FORMAT_FB LOGGER_OUTPUT_FORMAT_SQLITE
-            s = c->sqlInsertPackets(config.outputFormat);
+    if (config.calculate) {
+        std::stringstream ss;
+        bool isFirst = true;
+        for (auto it(config.macs.begin()); it != config.macs.end(); it++) {
+            if (isFirst)
+                isFirst = false;
+            else
+                ss << "\t";
+            double t = c->calc(*it, config.temperature);
+            ss << std::fixed << std::setprecision(5) << t;
+        }
+        s = ss.str();
+    } else {
+        // list
+        switch (config.outputFormat) {
+            case LOGGER_OUTPUT_FORMAT_JSON:
+                s = c->toJsonString();
+                break;
+            case LOGGER_OUTPUT_FORMAT_TEXT:
+                s = c->toString();
+                break;
+            case LOGGER_OUTPUT_FORMAT_TABLE:
+                s = c->toTableString();
+                break;
+            default: // LOGGER_OUTPUT_FORMAT_PG LOGGER_OUTPUT_FORMAT_MYSQL LOGGER_OUTPUT_FORMAT_FB LOGGER_OUTPUT_FORMAT_SQLITE
+                s = c->sqlInsertPackets(config.outputFormat);
+        }
     }
     std::cout << s << std::endl;
     delete c;
