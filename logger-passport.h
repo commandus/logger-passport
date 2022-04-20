@@ -18,7 +18,7 @@ LOG_CALLBACK;
 
 /**
  * Load passports from the directory. Listen for changes in the directory
- * @param config return pointer to LoggerPassportCollection if success
+ * @param config return pointer to LoggerPlumeCollection if success
  * @return descriptor
  */
 void *startPassportDirectory(
@@ -28,7 +28,7 @@ void *startPassportDirectory(
 
 /**
  * Free resources
- * @param config set pointer to LoggerPassportCollection to null
+ * @param config set pointer to LoggerPlumeCollection to null
  * @return true success
  */
 void stopPassportDirectory(
@@ -40,16 +40,29 @@ void stopPassportDirectory(
  * @param descriptor passport collection descriptor
  * @param serialNo plume serial number
  * @param year plume production year
- * @param sensor sensor MAC address
+ * @param mac sensor MAC address
  * @param value raw temperature
  * @return temperature
  */
-double calcTemparature(
+double calcTemperature(
     void *descriptor,
     int serialNo,
     int year,
-    uint64_t sensor,
+    uint64_t mac,
     double value
+);
+
+/**
+ * Calc temperature
+ * @param descriptor passport collection descriptor
+ * @param mac sensor MAC address
+ * @param value raw temperature
+ * @return temperature
+ */
+double calcTemperature(
+        void *descriptor,
+        uint64_t mac,
+        double value
 );
 
 #endif

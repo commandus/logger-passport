@@ -50,14 +50,13 @@ Passport file structure is:
 <FILE> := {<PLUME>} NEND
 <PLUME> := <PLUME_ID>{<SENSOR>} 
 <PLUME_ID> := N<YEAR>-<N>
-<SENSOR> := <MAC><A><B>[<C><A1><B1><C1><A2><B2><C2>]
+<SENSOR> := <MAC><A><B>[<C>] <LF> <A1><B1><C1> <LF> <A2><B2><C2>
 <MAC> := hex
-<A> := double
-<B> := double
-<C> := double
+<A>, <B>... := double
 <YEAR> := 00..99
 <N> := 1..99
 ```
+
 
 For instance passport file N10.txt
 ```
@@ -66,9 +65,8 @@ N10-1
 289FBD9B0600008C	1,0117	-0,12379
 NEND
 ```
-## Usage
 
-### Library
+## Library
 
 Static library liblogger-passport.a (-l logger-passport).
 
@@ -77,7 +75,7 @@ There are two way to use a library:
 - include headers with types (first way)
 - include only one "void *" type header (second way)
 
-#### First way
+### First way
 
 Header file: logger-sql-clause.h
 
@@ -108,7 +106,7 @@ r = parsePacketsToSQLClause(OUTPUT_FORMAT_SQL, dialect, *c.koses.begin());
 
 ```
 
-#### Second way
+### Second way
 
 Header file: logger-parseText.h
 
@@ -132,7 +130,7 @@ flushLoggerParser(env);
 doneLoggerParser(env);
 ```
 
-##### Calls
+### Calls
 
 First you need create a descriptor by initLoggerParser() call. It allocates
 memory to store received packets;
@@ -159,13 +157,23 @@ called) then it removes from the memory.
 - flushLoggerParser()
 - doneLoggerParser()
 
-### Command line tools
+## Command line tools
 
 - logger-passport-print get packets in hex and print out temperature values
 
-#### logger-passport-print
+### logger-passport-print
 
-logger-passport-print utility prints packet data tos stdout.
+logger-passport-print utility 
+
+- print packet data to stdout
+- calculate corrected temperature for specified sensor(s)
+
+For instance, calculate corrected temperature for sensor MAC address 2880E19B06000047
+using password files in the tests/passport directory (with subdirectories) :
+```
+./logger-passport-print tests/passport -c 25.3750 -m 2880E19B06000047
+25.3750
+```
 
 Pass packet as hex string in command line:
 ```

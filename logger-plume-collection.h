@@ -70,7 +70,7 @@ public:
 class SensorCoefficients {
 public:
     SensorMAC mac;
-    std::vector <double> coefficients;
+    std::vector<std::vector <double> > coefficients;  ///<  array of array: 1 for any temperature (one range), 3 arrays for four ranges
     std::string toJsonString() const;
     std::string toString() const;
     std::string toTableString() const;
@@ -116,7 +116,7 @@ class LoggerPlume {
          */
 		LoggerPlumeId id;
         /**
-         * Sensors array
+         * Sensors coefficients
          */
         std::vector<SensorCoefficients> sensors;
         /**
@@ -152,14 +152,7 @@ typedef enum {
  * @brief abstract class have virtual methods relates to the storage where collection resides.
  */
 class LoggerPlumeCollection {
-	private:
-        /**
-         * File parser routine return next token
-         * @param strm input stream
-         * @return token string
-         */
-		std::string next(std::istream& strm);
-	public:
+public:
 		// Abstract methods
         /**
          * Return count of passports
@@ -182,12 +175,18 @@ class LoggerPlumeCollection {
 		virtual const LoggerPlume *get(const LoggerPlumeId &id) const = 0;
         /**
          * Return pointer to the sensor
+         * @param mac sensor MAC address
+         * @return NULL if not found
+         */
+        virtual const SensorCoefficients *getSensor(uint64_t mac) const = 0;
+        /**
+         * Return pointer to the sensor
          * @param serialNo plume serial number
          * @param year yeat of production
          * @param mac sensor MAC address
          * @return NULL if not found
          */
-        const SensorCoefficients *get(int serialNo, int year, uint64_t mac) const;
+        const SensorCoefficients *getSensor(int serialNo, int year, uint64_t mac) const;
         /**
          * Add passport to the storage
          * @param value passport
@@ -202,13 +201,14 @@ class LoggerPlumeCollection {
          * Clear storage
          */
         virtual void clear() = 0;
+
         /**
-         * Parse JSON file stream
-         * @param modificationTime file last modification time, unix epoch in seconds
-         * @param name optional file name for reference
-         * @param strm input stream
-         * @return parsed plume passports count
-         */
+        * Parse JSON file stream
+        * @param modificationTime file last modification time, unix epoch in seconds
+        * @param name optional file name for reference
+        * @param strm input stream
+        * @return parsed plume passports count
+        */
         int parseJson(
                 time_t modificationTime,
                 const std::string &name, ///< optional resource name
@@ -221,7 +221,8 @@ class LoggerPlumeCollection {
          * @param strm input stream
          * @return parsed plume passports count
          */
-		int parseText(time_t modificationTime, const std::string &name, std::istream &strm);
+        int parseText(time_t modificationTime, const std::string &name, std::istream &strm);
+
         /**
          * Parse passports from the string
          * @param modificationTime time of creation
@@ -270,11 +271,22 @@ class LoggerPlumeCollection {
          * Calculate temperature
          * @param serialNo plume serial number starting with 1
          * @param year plume year - 2000
-         * @param sensor MAC address
+         * @param mac MAC address
          * @param temperature temperature
          * @return temperature
          */
-        double calc(int serialNo, int year, uint64_t sensor, double temperature) const;
+
+        double calc(int serialNo, int year, uint64_t mac, double temperature) const;
+        /**
+         * Calculate temperature
+         * @param mac MAC address
+         * @param temperature temperature
+         * @return temperature
+         */
+        double calc(uint64_t mac, double temperature) const;
+
+        virtual void startModification() = 0;
+        virtual void finishModification() = 0;
 };
 
 /**
@@ -283,6 +295,8 @@ class LoggerPlumeCollection {
 class LoggerPlumeMemory: public LoggerPlumeCollection {
     private:
         mutable std::mutex mapMutex;
+        std::map <uint64_t, const SensorCoefficients*> macIndex;
+        void buildMacIndex();
 	public:
 		std::map <LoggerPlumeId, LoggerPlume> values;
 		LoggerPlumeMemory();
@@ -291,9 +305,14 @@ class LoggerPlumeMemory: public LoggerPlumeCollection {
 		size_t count() const override;
 		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const override;
 		const LoggerPlume *get(const LoggerPlumeId &id) const override;
+        const SensorCoefficients *getSensor(uint64_t mac) const override;
 		void push(LoggerPlume &value) override;
         void remove(const LoggerPlumeId &id) override;
         void clear() override;
+
+        void startModification() override;
+        void finishModification() override;
+
 };
 
 #endif

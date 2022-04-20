@@ -2,9 +2,9 @@
 #include <iomanip>
 #include <cassert>
 #include <cmath>
-#include "logger-passport-collection.h"
+#include "logger-plume-collection.h"
 
-static const std::string passports = "N6-3\n"
+static const std::string Plumes = "N6-3\n"
     "282AA47804000061\t1,01456\t-0,18723\n"
     "287027790400008A\t1,01348\t-0,12368\n"
     "287C257904000074\t1,0117\t-0,14454\n"
@@ -87,8 +87,8 @@ static const std::string passports = "N6-3\n"
 
 static void testParseText()
 {
-    LoggerPassportCollection *c = new LoggerPassportMemory();
-    c->loadString(time(nullptr), passports);
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->loadString(time(nullptr), Plumes);
     std::cout << "Plumes: " << c->count() << std::endl;
     assert(c->count() == 3);
     std::cout << "Plume N6-1 sensor count: " << c->get(1, 6)->sensors.size() << std::endl;
@@ -102,21 +102,21 @@ static void testParseText()
     std::cout << "Plume N6-3 sensor 0: " << c->get(3, 6)->sensors[0].toJsonString() << std::endl;
     std::cout << "Plume N6-3 sensor 1: " << c->get(3, 6)->sensors[1].toJsonString() << std::endl;
 
-    assert(fabs(c->get(3, 6)->sensors[0].coefficients[0] - 1.01456) < 0.00001);
-    assert(fabs(c->get(3, 6)->sensors[0].coefficients[1] - (-0.18723)) < 0.00001);
+    assert(fabs(c->get(3, 6)->sensors[0].coefficients[0][0] - 1.01456) < 0.00001);
+    assert(fabs(c->get(3, 6)->sensors[0].coefficients[0][1] - (-0.18723)) < 0.00001);
     assert(c->get(3, 6)->sensors[0].mac == 0x282AA47804000061);
     delete c;
 }
 
 static void testParseJson()
 {
-    LoggerPassportCollection *c = new LoggerPassportMemory();
-    c->loadString(time(nullptr), passports, false);
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->loadString(time(nullptr), Plumes, false);
     std::string json = c->toJsonString();
     std::cout << json << std::endl;
 
     std::cout << std::endl;
-    LoggerPassportCollection *c2 = new LoggerPassportMemory();
+    LoggerPlumeCollection *c2 = new LoggerPlumeMemory();
     c2->loadString(time(nullptr), json, true);
     std::string json2 = c2->toJsonString();
     std::cout << json2 << std::endl;
@@ -129,8 +129,8 @@ static void testParseJson()
 
 static void testSaveText()
 {
-    LoggerPassportCollection *c = new LoggerPassportMemory();
-    c->loadString(time(nullptr), passports, false);
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->loadString(time(nullptr), Plumes, false);
 
     std::string text = c->toString();
     std::cout << std::endl;
@@ -142,8 +142,8 @@ static void testSaveText()
 
 static void testTemperature()
 {
-    LoggerPassportCollection *c = new LoggerPassportMemory();
-    c->loadString(time(nullptr), passports, false);
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->loadString(time(nullptr), Plumes, false);
 
     std::cout << std::endl;
     for (int t = -30; t < 30; t++) {
@@ -161,16 +161,42 @@ static void testTemperature()
 
 static void testTemperature1()
 {
-    LoggerPassportCollection *c = new LoggerPassportMemory();
-    c->loadString(time(nullptr), passports, false);
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->loadString(time(nullptr), Plumes, false);
+
+    uint64_t macs[20] = {
+        0x28bc83180400005b,
+        0x2874b11804000062,
+        0x282b981804000063,
+        0x28d8b318040000c0,
+        0x28dd8718040000b0,
+        0x2813ad1804000079,
+        0x2868b61804000015,
+        0x28cb7f18040000c1,
+        0x28c08018040000f0,
+        0x28ec9918040000b4,
+
+        0x2841b81804000097,
+        0x28408d18040000f6,
+        0x288ea31804000020,
+        0x28ff8918040000ca,
+        0x28d9951804000093,
+        0x28098b2f02000096,
+        0x2899ca2e0200008c,
+        0x28b19f2f02000053,
+        0x28f0a62f02000066,
+        0x28c4902f0200004f
+    };
 
     std::cout << std::endl;
-    double t0 = 29.0;
-    double t1 = c->calc(1, 6, 0x28c4902f0200004f, t0);
-    std::cout << "28c4902f0200004f" << std::fixed << std::setprecision(5) << " "
-              << t0 << " " << t1
-              << " diff: " << fabs(t0 - t1)
-              << std::endl;
+    for (int i = 0; i < 20; i++) {
+        double t0 = 29.0;
+        double t1 = c->calc(1, 6, macs[i], t0);
+        std::cout << std::hex << macs[i] << std::fixed << std::setprecision(5) << " "
+                << t0 << " " << t1
+                << " diff: " << fabs(t0 - t1)
+                << std::endl;
+    }
     std::cout << std::endl;
     delete c;
 }
