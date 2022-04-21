@@ -5,8 +5,6 @@
 #include <rapidjson/document.h>
 
 #include "rapidjson/rapidjson.h"
-#include "rapidjson/writer.h"
-#include "rapidjson/stringbuffer.h"
 #include <rapidjson/istreamwrapper.h>
 
 #include "logger-plume-collection.h"
@@ -40,11 +38,11 @@ const char *JSON_PASSPORT_NAMES[] = {
 
 SensorMAC::SensorMAC()
 {
-
+    mac.u = 0;
 }
 
 SensorMAC::SensorMAC(const SensorMAC &value)
-        : mac(value.mac)
+    : mac(value.mac)
 {
 
 }
@@ -177,8 +175,8 @@ double SensorCoefficients::calc(
 ) const
 {
     int idx = 0;
-    int t = temperature;
-    int sz = coefficients.size();
+    int t = (int) temperature;
+    int sz = (int) coefficients.size();
     if (sz == 3) {
         if (t < -3)
             idx = 0;
@@ -194,7 +192,7 @@ double SensorCoefficients::calc(
         else
             return temperature;
     }
-    int sz2 = coefficients[idx].size();
+    int sz2 = (int) coefficients[idx].size();
     switch (sz2) {
         case 0:
         case 1:
@@ -424,16 +422,14 @@ const LoggerPlume *LoggerPlumeCollection::get(int serialNo, int year) const
     return get(LoggerPlumeId(serialNo, year));
 }
 
-const SensorCoefficients *LoggerPlumeCollection::getSensor(int serialNo, int year, uint64_t mac) const
+const SensorCoefficients *LoggerPlumeCollection::getSensor(int serialNo, int year, int no) const
 {
     const LoggerPlume *p = get(LoggerPlumeId(serialNo, year));
     if (!p)
         return nullptr;
-    for (std::vector<SensorCoefficients>::const_iterator it(p->sensors.begin()); it != p->sensors.end(); it++) {
-        if (it->mac == mac)
-            return &*it;
-    }
-    return nullptr;
+    if (no < 0 || no >= p->sensors.size())
+        return nullptr;
+    return &p->sensors[no];
 }
 
 /**
@@ -451,11 +447,11 @@ void LoggerPlumeCollection::remove(
 double LoggerPlumeCollection::calc(
     int serialNo,
     int year,
-    uint64_t sensor,
+    int sensorNo,
     double temperature
 ) const
 {
-    const SensorCoefficients *c = getSensor(serialNo, year, sensor);
+    const SensorCoefficients *c = getSensor(serialNo, year, sensorNo);
     if (c)
         return c->calc(temperature);
     return temperature;
@@ -470,6 +466,11 @@ double LoggerPlumeCollection::calc(
     if (c)
         return c->calc(temperature);
     return temperature;
+}
+
+LoggerPlumeCollection::~LoggerPlumeCollection()
+{
+
 }
 
 static void skipComments(
@@ -545,9 +546,9 @@ static bool putYearPlume(
 	if (p == std::string::npos)
 		return false;
 	std::string sYear = value.substr(1, p);
-    retVal.id.year = strtol(sYear.c_str(), nullptr, 10);
+    retVal.id.year = (int) strtol(sYear.c_str(), nullptr, 10);
 	std::string sPlume= value.substr(p + 1);
-    retVal.id.plume = strtol(sPlume.c_str(), nullptr, 10);
+    retVal.id.plume = (int) strtol(sPlume.c_str(), nullptr, 10);
 	return true;
 }
 
@@ -693,7 +694,7 @@ int LoggerPlumeCollection::parseText(
 		std::string value = next(tokenAtNewLineBefore, tokenAtNewLineAfter, strm);
 		// fix
 		if (token == TOK_COEFF) {
-			if (value.size()) {
+			if (!value.empty()) {
 				if (value[0] == 'N') {
 					token = TOK_YEAR_PLUME;
 				}

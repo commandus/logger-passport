@@ -17,12 +17,12 @@ public:
     // log callback
     LOG_CALLBACK onLog;
     // passport files root
-    std::string passportDir;
+    std::vector<std::string> passportDirs;
 
     PassportServiceConfig();
     virtual ~PassportServiceConfig();
 
-    void reload(const std::string &fileName, const filewatch::Event event);
+    void reload(const std::string &fileName, const filewatch::Event changeType);
 
     void load();
 };
@@ -60,15 +60,15 @@ void PassportServiceConfig::reload(
             case filewatch::Event::renamed_new:
                 t = "renamed (new name)";
                 break;
-        };
-        onLog(this, 3, MODULE_CODE, 0, "File " + fileName + " " + t + " in passport directory " + passportDir);
+        }
+        onLog(this, 3, MODULE_CODE, 0, "File " + fileName + " " + t);
     }
 }
 
 void PassportServiceConfig::load() {
     this->passports->startModification();
     this->passports->clear();
-    this->passports->loadFile(this->passportDir, "");
+    this->passports->loadFiles(this->passportDirs, "");
     this->passports->finishModification();
 }
 
@@ -78,17 +78,46 @@ void PassportServiceConfig::load() {
  * @return descriptor
  */
 void *startPassportDirectory(
-    std::string passportDir, ///< passport files root
-    LOG_CALLBACK onLog      ///< log callback
+    const std::string &passportDir, ///< passport files root
+    LOG_CALLBACK onLog              ///< log callback
+)
+{
+    PassportServiceConfig *config = new PassportServiceConfig();
+    config->passportDirs.push_back(passportDir);
+    config->passports = new LoggerPlumeMemory();
+    config->onLog = onLog;
+
+    config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
+       [config](const std::string &path, const filewatch::Event changeType) {
+            config->reload(path, changeType);
+        }
+    );
+    config->load();
+    return config;
+}
+
+/**
+ * Load passports from the directories or files. Listen for changes in the directory
+ * @param config return pointer to LoggerPlumeCollection if success
+ * @return descriptor
+ */
+void *startPassportDirectory(
+    const std::vector<std::string> &passportDirs,   ///< passport files or directories list
+    LOG_CALLBACK onLog                              ///< log callback
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
     config->passports = new LoggerPlumeMemory();
-    config->watcher = new filewatch::FileWatch<std::string>(config->passportDir,
-       [config](const std::string &path, const filewatch::Event changeType) {
-           config->reload(path, changeType);
-       }
-    );
+    config->passportDirs = passportDirs;
+    config->onLog = onLog;
+
+    if (!passportDirs.empty()) {
+        config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
+        [config](const std::string &path, const filewatch::Event changeType) {
+                config->reload(path, changeType);
+            }
+        );
+    }
     config->load();
     return config;
 }
@@ -117,7 +146,7 @@ double calcTemperature(
     void *descriptor,
     int serialNo,
     int year,
-    uint64_t sensor,
+    int sensor,
     double value
 )
 {
