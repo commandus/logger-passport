@@ -478,7 +478,7 @@ static void skipComments(
 {
 	while (!strm.eof()) {
 		char c;
-		strm >> c;
+		strm.get(c);
 		if (strm.bad())
 			break;
 		if (c == 10)
@@ -511,10 +511,11 @@ static std::string next(
                 retNewLineBefore = true;
             continue;
         }
-		if (c == '#')
+		if (c == '#') {
 			skipComments(strm);
-		else
-			ss << c;
+            continue;
+        }
+		ss << c;
 		break;
 	}
 	
@@ -526,10 +527,11 @@ static std::string next(
                 retNewLineAfter = true;
             break;
         }
-		if (c == '#')
+		if (c == '#') {
 			skipComments(strm);
-		else
-			ss << c;
+            continue;
+        }
+		ss << c;
 	}
 	return ss.str();
 }
@@ -866,7 +868,13 @@ const SensorCoefficients *LoggerPlumeMemory::getSensor(
     uint64_t mac
 ) const
 {
-    return nullptr;
+    if (!mapMutex.try_lock())
+        return nullptr;
+    std::map <uint64_t, const SensorCoefficients *>::const_iterator it(macIndex.find(mac));        
+    mapMutex.unlock();
+    if (it != macIndex.end())
+        return it->second;
+    return nullptr;        
 }
 
 size_t LoggerPlumeMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const
@@ -904,7 +912,7 @@ void LoggerPlumeMemory::remove(
 void LoggerPlumeMemory::clear()
 {
     values.clear();
-    buildMacIndex();
+    macIndex.clear();
 }
 
 void LoggerPlumeMemory::startModification()
@@ -914,8 +922,8 @@ void LoggerPlumeMemory::startModification()
 
 void LoggerPlumeMemory::finishModification()
 {
-    mapMutex.unlock();
     buildMacIndex();
+    mapMutex.unlock();
 }
 
 void LoggerPlumeMemory::buildMacIndex()
