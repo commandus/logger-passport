@@ -6,9 +6,13 @@
 
 static const std::string Plumes = "N6-3\n"
     "282AA47804000061\t1,01456\t-0,18723\n"
+    "# comment at the beginning\n"
     "287027790400008A\t1,01348\t-0,12368\n"
-    "287C257904000074\t1,0117\t-0,14454\n"
+    "287C257904000074\t1,0117\t-0,14454   # comment at the end\n"
     "2817B979040000D9\t1,0142\t-0,06039\n"
+    "# multiline comment 1\n"
+    "# multiline comment 2\n"
+    "# multiline comment 3\n"
     "28F329790400009B\t1,01025\t-0,06014\n"
     "289FBC78040000CF\t1,0135\t-0,18703\n"
     "2855A7790400001C\t1,0142\t-0,06039\n"
@@ -113,13 +117,9 @@ static void testParseJson()
     LoggerPlumeCollection *c = new LoggerPlumeMemory();
     c->loadString(time(nullptr), Plumes, false);
     std::string json = c->toJsonString();
-    std::cout << json << std::endl;
-
-    std::cout << std::endl;
     LoggerPlumeCollection *c2 = new LoggerPlumeMemory();
     c2->loadString(time(nullptr), json, true);
     std::string json2 = c2->toJsonString();
-    std::cout << json2 << std::endl;
 
     assert(json == json2);
 
@@ -146,7 +146,7 @@ static void testTemperature()
     c->loadString(time(nullptr), Plumes, false);
 
     std::cout << std::endl;
-    for (int t = -30; t < 30; t++) {
+    for (int t = -30; t < -29; t++) {
         for (auto it(c->get(1, 6)->sensors.begin()); it != c->get(1, 6)->sensors.end(); it++) {
             double t1 = c->calc(1, 6, it->mac.mac.u, t * 1.0);
             std::cout << it->mac.toString() << std::fixed << std::setprecision(5) << " "
@@ -162,7 +162,9 @@ static void testTemperature()
 static void testTemperature1()
 {
     LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->startModification();
     c->loadString(time(nullptr), Plumes, false);
+    c->finishModification();
 
     uint64_t macs[20] = {
         0x28bc83180400005b,
@@ -192,16 +194,15 @@ static void testTemperature1()
     for (int i = 0; i < 20; i++) {
         double t0 = 29.0;
         double t1 = c->calc(1, 6, macs[i], t0);
+        double t2 = c->calc(macs[i], t0);
         std::cout << std::hex << macs[i] << std::fixed << std::setprecision(5) << " "
-                << t0 << " " << t1
+                << t0 << " " << t1 << " " << t2
                 << " diff: " << fabs(t0 - t1)
                 << std::endl;
     }
     std::cout << std::endl;
     delete c;
 }
-
-
 
 int main(int argc, char **argv)
 {
