@@ -183,10 +183,10 @@ public:
          * Return pointer to the sensor
          * @param serialNo plume serial number
          * @param year yeat of production
-         * @param mac sensor MAC address
+         * @param no sensor number 0..
          * @return NULL if not found
          */
-        const SensorCoefficients *getSensor(int serialNo, int year, uint64_t mac) const;
+        const SensorCoefficients *getSensor(int serialNo, int year, int no) const;
         /**
          * Add passport to the storage
          * @param value passport
@@ -271,12 +271,12 @@ public:
          * Calculate temperature
          * @param serialNo plume serial number starting with 1
          * @param year plume year - 2000
-         * @param mac MAC address
+         * @param no sensor no 0..
          * @param temperature temperature
          * @return temperature
          */
 
-        double calc(int serialNo, int year, uint64_t mac, double temperature) const;
+        double calc(int serialNo, int year, int no, double temperature) const;
         /**
          * Calculate temperature
          * @param mac MAC address
@@ -287,6 +287,8 @@ public:
 
         virtual void startModification() = 0;
         virtual void finishModification() = 0;
+
+        virtual ~LoggerPlumeCollection();
 };
 
 /**
