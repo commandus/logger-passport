@@ -87,11 +87,13 @@ void *startPassportDirectory(
     config->passports = new LoggerPlumeMemory();
     config->onLog = onLog;
 
-    config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
-       [config](const std::string &path, const filewatch::Event changeType) {
-            config->reload(path, changeType);
-        }
-    );
+    if (!passportDir.empty()) {
+        config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
+        [config](const std::string &path, const filewatch::Event changeType) {
+                config->reload(path, changeType);
+            }
+        );
+    }
     config->load();
     return config;
 }
