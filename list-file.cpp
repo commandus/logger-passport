@@ -208,6 +208,8 @@ bool isOrdinalFile(
 	return false;
 }
 
+#endif
+
 /**
  * Return true if file name extension is .json
  * @param path file name to examine
@@ -219,5 +221,3 @@ bool fileIsJSON(
 {
     return (path.find(".json") == path.size() - 5);
 }
-
-#endif
