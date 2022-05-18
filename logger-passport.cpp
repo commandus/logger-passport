@@ -144,6 +144,25 @@ void stopPassportDirectory(
     }
 }
 
+/**
+ * Return true if plume has passport
+ * @param descriptor passport collection descriptor
+ * @param serialNo plume serial number
+ * @param year plume production year
+ * @return true- has passport
+ */
+bool hasPassport(
+    void *descriptor,
+    int serialNo,
+    int year
+)
+{
+    if (!descriptor)
+        return false;
+    PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    return config->passports->get(serialNo, year) != nullptr;
+}
+
 double calcTemperature(
     void *descriptor,
     int serialNo,
