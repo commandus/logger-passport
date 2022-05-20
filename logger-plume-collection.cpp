@@ -103,7 +103,7 @@ SensorMAC &SensorMAC::operator=(const std::string &value)
     return *this;
 }
 
-// -------- LoggerPlumeId --------
+// -------- SensorCoefficients --------
 
 std::string SensorCoefficients::toString() const
 {
@@ -152,7 +152,20 @@ std::string SensorCoefficients::toJsonString() const
 
 std::string SensorCoefficients::toTableString() const
 {
-    return toString();
+    std::stringstream ss;
+    ss << mac.toString();
+    bool isFirstLine = true;
+    for (auto it(coefficients.begin()); it != coefficients.end(); it++) {
+        if (isFirstLine)
+            isFirstLine = false;
+        else
+            ss << "\t\t"; // add extra tab
+        for (auto it2(it->begin()); it2 != it->end(); it2++) {
+            ss << "\t" << std::fixed << std::setprecision(5) << *it2;
+        }
+        ss << std::endl;
+    }
+    return ss.str();
 }
 
 std::string SensorCoefficients::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
@@ -361,12 +374,17 @@ std::string LoggerPlume::toString() const
 
 std::string LoggerPlume::toTableString() const
 {
-	return toString();
+    std::stringstream ss;
+    ss << id.toString() << std::endl;
+    for (std::vector<SensorCoefficients>::const_iterator it(sensors.begin()); it != sensors.end(); it++) {
+        ss << it->toTableString();
+    }
+    return ss.str();
 }
 
 std::string LoggerPlume::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const
 {
-	return toString();
+	return "Not implemented";
 }
 
 // -------- LoggerPlumeCollection --------
@@ -409,7 +427,17 @@ std::string LoggerPlumeCollection::toString() const
 
 std::string LoggerPlumeCollection::toTableString() const
 {
-	return toJsonString();
+    std::vector<LoggerPlumeId> plumeIds;
+    size_t cnt = count();
+    ids(plumeIds, 0, cnt);
+    std::stringstream ss;
+    for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
+        const LoggerPlume *p = get(*it);
+        if (p)
+            ss << p->toTableString();
+    }
+    ss << std::endl;
+    return ss.str();
 }
 
 std::string LoggerPlumeCollection::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) const

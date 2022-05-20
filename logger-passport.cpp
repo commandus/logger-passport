@@ -145,14 +145,19 @@ void stopPassportDirectory(
 }
 
 /**
- * Return true if plume has passport
+ * Return true if plume has passport.
+ * Passport descriptor must be initialized.
  * @param descriptor passport collection descriptor
+ * @param retType request return passport
+ * @param retVal if not NULL, return sensor passports as JSON or text string
  * @param serialNo plume serial number
  * @param year plume production year
  * @return true- has passport
  */
 bool hasPassport(
     void *descriptor,
+    FORMAT_PASSPORT_TYPE retType,
+    std::string *retVal,
     int serialNo,
     int year
 )
@@ -160,7 +165,71 @@ bool hasPassport(
     if (!descriptor)
         return false;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
-    return config->passports->get(serialNo, year) != nullptr;
+    const LoggerPlume *p = config->passports->get(serialNo, year);
+    if (p && retVal) {
+        switch(retType) {
+            case FORMAT_PASSPORT_TEXT:
+                *retVal = p->toString();
+                break;
+            case FORMAT_PASSPORT_JSON:
+                *retVal = p->toJsonString();
+                break;
+            case FORMAT_PASSPORT_TABLE:
+                *retVal = p->toTableString();
+                break;
+            default:
+                break;
+        }
+    }
+    return p!= nullptr;
+}
+
+/**
+ * Check has sensor passport. If second parameter is not NULL, return coefficients
+ * @param descriptor passport descriptor
+ * @param retCoefficients If not NULL, return pointer to array of array: 1 for any temperature (one range), 3 arrays for four ranges
+ * @param serialNo plume serial number
+ * @param year plume production year - 2000
+ * @param seqno sensor number 1..
+ * @return true- plume has sensor and plume has passport
+ */
+bool hasSensor(
+    void *descriptor,
+    const std::vector<std::vector <double> > **retCoefficients,
+    int serialNo,
+    int year,
+    int seqno
+)
+{
+    if (!descriptor)
+        return false;
+    PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    const SensorCoefficients *c = config->passports->getSensor(serialNo, year, seqno);
+    if (retCoefficients)
+        *retCoefficients = &c->coefficients;
+    return c != nullptr;
+}
+
+/**
+ * Check has sensor passport. If second parametr is not NULL, return coefficients
+ * @param descriptor passport descriptor
+ * @param retCoefficients If not NULL, return pointer to array of array: 1 for any temperature (one range), 3 arrays for four ranges
+ * @param mac MAC address
+ * @return true- plume has sensor and plume has passport
+ */
+bool hasSensor(
+    void *descriptor,
+    const std::vector<std::vector <double> > **retCoefficients,
+    uint64_t mac
+)
+{
+    if (!descriptor)
+        return false;
+    PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    const SensorCoefficients *c = config->passports->getSensor(mac);
+    if (retCoefficients)
+        *retCoefficients = &c->coefficients;
+    return c != nullptr;
 }
 
 double calcTemperature(
