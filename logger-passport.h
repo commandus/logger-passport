@@ -72,7 +72,7 @@ typedef enum {
 size_t countPassports(
     void *descriptor,
     FORMAT_PASSPORT_TYPE retType,
-    std::string *retVal,
+    std::vector<std::string> *retVal,
     size_t offset,
     size_t count
 );
@@ -90,7 +90,7 @@ size_t countPassports(
 bool hasPassport(
     void *descriptor,
     FORMAT_PASSPORT_TYPE retType,
-    std::vector<std::string> *retVal,
+    std::string *retVal,
     int serialNo,
     int year
 );
