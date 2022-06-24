@@ -166,10 +166,25 @@ static void testTemperature()
     delete c;
 }
 
+static void testSize()
+{
+    LoggerPlumeCollection *c = new LoggerPlumeMemory();
+    c->startModification();
+    c->loadString(time(nullptr), Plumes, false);
+    c->finishModification();
+
+    std::cout << std::endl;
+    std::cout << "Size: " << c->count() << std::endl;
+
+    std::cout << std::endl;
+    delete c;
+}
+
 int main(int argc, char **argv)
 {
     testParseText();
     testParseJson();
     testSaveText();
     testTemperature();
+    testSize();
 }

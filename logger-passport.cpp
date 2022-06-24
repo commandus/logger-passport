@@ -193,8 +193,10 @@ size_t countPassports(
 )
 {
     if (!descriptor)
-        return false;
+        return 0;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    if (!config->passports)
+        return 0;
     size_t r = config->passports->count();
     if (!retVal)
         return r;
