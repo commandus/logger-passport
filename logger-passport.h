@@ -95,7 +95,7 @@ bool hasSensor(
 );
 
 /**
- * Check has sensor passport. If second parametr is not NULL, return coefficients
+ * Check has sensor passport. If second parameter is not NULL, return coefficients
  * @param descriptor passport descriptor
  * @param retCoefficients If not NULL, return pointer to array of array: 1 for any temperature (one range), 3 arrays for four ranges
  * @param mac MAC address
