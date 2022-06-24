@@ -184,6 +184,41 @@ bool hasPassport(
     return p!= nullptr;
 }
 
+size_t countPassports(
+    void *descriptor,
+    FORMAT_PASSPORT_TYPE retType,
+    std::vector<std::string> *retVal,
+    size_t offset,
+    size_t count
+)
+{
+    if (!descriptor)
+        return false;
+    PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    size_t r = config->passports->count();
+    if (!retVal)
+        return r;
+    std::vector<LoggerPlumeId> identifiers;
+    config->passports->ids(identifiers, offset, count);
+    for (std::vector<LoggerPlumeId>::const_iterator it(identifiers.begin()); it != identifiers.end(); it++) {
+        const LoggerPlume *p = config->passports->get(*it);
+        if (!p)
+            continue;
+        switch(retType) {
+            case FORMAT_PASSPORT_TEXT:
+                retVal->push_back(p->toString());
+                break;
+            case FORMAT_PASSPORT_JSON:
+                retVal->push_back(p->toJsonString());
+                break;
+            case FORMAT_PASSPORT_TABLE:
+                retVal->push_back(p->toTableString());
+                break;
+        }
+    }
+    return r;
+}
+
 /**
  * Check has sensor passport. If second parameter is not NULL, return coefficients
  * @param descriptor passport descriptor

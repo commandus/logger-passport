@@ -60,6 +60,24 @@ typedef enum {
 } FORMAT_PASSPORT_TYPE;
 
 /**
+ * Return passports count
+ * Passport descriptor must be initialized.
+ * @param descriptor passport collection descriptor
+ * @param retType request return passport
+ * @param offset 0..
+ * @param count how many records to return
+ * @param retVal if not NULL, return sensor passports as JSON or text string
+ * @return count of passports
+ */
+size_t countPassports(
+    void *descriptor,
+    FORMAT_PASSPORT_TYPE retType,
+    std::string *retVal,
+    size_t offset,
+    size_t count
+);
+
+/**
  * Return true if plume has passport.
  * Passport descriptor must be initialized.
  * @param descriptor passport collection descriptor
@@ -72,7 +90,7 @@ typedef enum {
 bool hasPassport(
     void *descriptor,
     FORMAT_PASSPORT_TYPE retType,
-    std::string *retVal,
+    std::vector<std::string> *retVal,
     int serialNo,
     int year
 );
