@@ -264,11 +264,11 @@ LoggerPlumeId& LoggerPlumeId::operator=(
 
 bool LoggerPlumeId::operator<(const LoggerPlumeId &another) const
 {
-	if (plume < another.plume)
-		return true;
-	if (plume > another.plume)
-		return false;
-	return year < another.year;
+    if (year < another.year)
+        return true;
+    if (year > another.year)
+        return false;
+    return plume < another.plume;
 }
 
 bool LoggerPlumeId::operator==(
