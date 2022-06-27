@@ -910,15 +910,13 @@ size_t LoggerPlumeMemory::ids(std::vector<LoggerPlumeId> &retval,
 	size_t ofs = 0;
 	size_t cnt = 0;
     for (std::map <LoggerPlumeId, LoggerPlume>::const_iterator it(values.begin()); it != values.end(); it++) {
-        if (year || plume) {
-            if (year) {
-                if (it->first.year != year)
-                    continue;
-            }
-            if (plume) {
-                if (it->first.plume != plume)
-                    continue;
-            }
+        if (year) {
+            if (it->first.year != year)
+                continue;
+        }
+        if (plume) {
+            if (it->first.plume != plume)
+                continue;
         }
 		ofs++;
 		if (ofs <= offset)
