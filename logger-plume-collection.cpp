@@ -392,7 +392,7 @@ std::string LoggerPlume::sqlInsertPackets(LOGGER_OUTPUT_FORMAT outputFormat) con
 std::string LoggerPlumeCollection::toJsonString() const
 {
 	std::vector<LoggerPlumeId> plumeIds;
-	size_t cnt = ids(plumeIds, 0, 0);
+	size_t cnt = ids(plumeIds, 0, 0, 0, 0);
 	std::stringstream ss;
 	ss << "[";
 	bool firstItem = true;
@@ -413,8 +413,7 @@ std::string LoggerPlumeCollection::toJsonString() const
 std::string LoggerPlumeCollection::toString() const
 {
     std::vector<LoggerPlumeId> plumeIds;
-    size_t cnt = count();
-    ids(plumeIds, 0, cnt);
+    ids(plumeIds, 0, 0, 0, 0);
     std::stringstream ss;
     for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
         const LoggerPlume *p = get(*it);
@@ -428,8 +427,7 @@ std::string LoggerPlumeCollection::toString() const
 std::string LoggerPlumeCollection::toTableString() const
 {
     std::vector<LoggerPlumeId> plumeIds;
-    size_t cnt = count();
-    ids(plumeIds, 0, cnt);
+    ids(plumeIds, 0, 0, 0, 0);
     std::stringstream ss;
     for (std::vector<LoggerPlumeId>::const_iterator it(plumeIds.begin()); it != plumeIds.end(); it++) {
         const LoggerPlume *p = get(*it);
@@ -906,11 +904,22 @@ const SensorCoefficients *LoggerPlumeMemory::getSensor(
     return nullptr;        
 }
 
-size_t LoggerPlumeMemory::ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const
+size_t LoggerPlumeMemory::ids(std::vector<LoggerPlumeId> &retval,
+    int year, int plume, size_t offset, size_t limit) const
 {
 	size_t ofs = 0;
 	size_t cnt = 0;
     for (std::map <LoggerPlumeId, LoggerPlume>::const_iterator it(values.begin()); it != values.end(); it++) {
+        if (year || plume) {
+            if (year) {
+                if (it->first.year != year)
+                    continue;
+            }
+            if (plume) {
+                if (it->first.plume != plume)
+                    continue;
+            }
+        }
 		ofs++;
 		if (ofs <= offset)
 			continue;

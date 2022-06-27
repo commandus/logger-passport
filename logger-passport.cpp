@@ -188,6 +188,8 @@ size_t countPassports(
     void *descriptor,
     FORMAT_PASSPORT_TYPE retType,
     std::vector<std::string> *retVal,
+    int year,
+    int plume,
     size_t offset,
     size_t count
 )
@@ -201,7 +203,7 @@ size_t countPassports(
     if (!retVal)
         return r;
     std::vector<LoggerPlumeId> identifiers;
-    config->passports->ids(identifiers, offset, count);
+    config->passports->ids(identifiers, year, plume, offset, count);
     for (std::vector<LoggerPlumeId>::const_iterator it(identifiers.begin()); it != identifiers.end(); it++) {
         const LoggerPlume *p = config->passports->get(*it);
         if (!p)

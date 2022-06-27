@@ -162,11 +162,14 @@ public:
         /**
          * Return plume identifiers in the storage
          * @param retval returned plume identifiers
+         * @param year 0- any, >0- filter by year
+         * @param plume 0- any, >0- filter by plume
          * @param offset e.g. 0
          * @param limit e.g. 100
          * @return count of added identifiers to the retval parameter
          */
-		virtual size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const = 0;
+		virtual size_t ids(std::vector<LoggerPlumeId> &retval,
+            int year, int plume, size_t offset, size_t limit) const = 0;
         /**
          * Return passport from specified identifier
          * @param id plume identifier
@@ -210,9 +213,9 @@ public:
         * @return parsed plume passports count
         */
         int parseJson(
-                time_t modificationTime,
-                const std::string &name, ///< optional resource name
-                std::istream &strm
+            time_t modificationTime,
+            const std::string &name, ///< optional resource name
+            std::istream &strm
         );
         /**
          * Parse Text file stream
@@ -305,7 +308,8 @@ class LoggerPlumeMemory: public LoggerPlumeCollection {
 		LoggerPlumeMemory(const LoggerPlumeMemory& value);
 		virtual ~LoggerPlumeMemory();
 		size_t count() const override;
-		size_t ids(std::vector<LoggerPlumeId> &retval, size_t offset, size_t limit) const override;
+		size_t ids(std::vector<LoggerPlumeId> &retval,
+            int year, int plume, size_t offset, size_t limit) const override;
 		const LoggerPlume *get(const LoggerPlumeId &id) const override;
         const SensorCoefficients *getSensor(uint64_t mac) const override;
 		void push(LoggerPlume &value) override;
