@@ -197,15 +197,17 @@ size_t countPassports(
     if (!descriptor)
         return 0;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
-    if (!config->passports || !retVal)
+    if (!config->passports)
         return 0;
     std::vector<LoggerPlumeId> identifiers;
     size_t r = config->passports->ids(identifiers, year, plume, offset, count);
+    if (!retVal | retType == FORMAT_PASSPORT_NONE)
+        return r;
     for (std::vector<LoggerPlumeId>::const_iterator it(identifiers.begin()); it != identifiers.end(); it++) {
         const LoggerPlume *p = config->passports->get(*it);
         if (!p)
             continue;
-        switch(retType) {
+        switch (retType) {
             case FORMAT_PASSPORT_TEXT:
                 retVal->push_back(p->toString());
                 break;
