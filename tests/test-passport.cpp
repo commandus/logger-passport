@@ -176,6 +176,22 @@ static void testSize()
     std::cout << std::endl;
     std::cout << "Size: " << c->count() << std::endl;
 
+    std::vector<LoggerPlumeId> pids;
+    size_t sz = c->ids(pids, 0, 0, 0, 0);
+    std::cout << "Size: " << c->count() << std::endl;
+
+    sz = c->ids(pids, 6, 0, 0, 0);
+    std::cout << "Size year 6: " << sz << std::endl;
+
+    sz = c->ids(pids, 6, 1, 0, 0);
+    std::cout << "Size year 6 plume 1: " << sz << std::endl;
+
+    sz = c->ids(pids, 6, 2, 0, 0);
+    std::cout << "Size year 6 plume 2: " << sz << std::endl;
+
+    sz = c->ids(pids, 0, 3, 0, 0);
+    std::cout << "Size plume 3: " << sz << std::endl;
+
     std::cout << std::endl;
     delete c;
 }
