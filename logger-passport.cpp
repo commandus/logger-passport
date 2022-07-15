@@ -300,5 +300,5 @@ double calcTemperature(
     if (!descriptor)
         return value;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
-    config->passports->calc(mac, value);
+    return config->passports->calc(mac, value);
 }
