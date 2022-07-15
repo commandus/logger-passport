@@ -281,7 +281,7 @@ double calcTemperature(
     if (!descriptor)
         return value;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
-    config->passports->calc(serialNo, year, sensor, value);
+    return config->passports->calc(serialNo, year, sensor, value);
 }
 
 /**

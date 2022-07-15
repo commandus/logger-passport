@@ -166,7 +166,7 @@ int main(int argc, char **argv)
     LoggerPlumeCollection *c = new LoggerPlumeMemory();
 
     if (config.mode == LOGGER_INPUT_SRC_STDIN)
-        c->parseText(time(NULL), "cin", std::cin);
+        c->parseText(time(nullptr), "cin", std::cin);
     else
         c->loadFiles(config.fileNames, DEF_PASSPORT_FILE_SUFFIX);
     // printErrorAndExit(ERR_LOGGER_PASSPORT_INVALID_FORMAT);
