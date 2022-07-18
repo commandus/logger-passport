@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(LIB_LOGGER_PASSPORT_SRC
 	logger-passport.cpp logger-plume-collection.cpp
-	list-file.cpp errlist.cpp
+	list-file.cpp utilfile.cpp errlist.cpp
 )
 set(SRC_LOGGER_PASSPORT_PRINT
 	logger-passport-print.cpp

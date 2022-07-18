@@ -20,7 +20,7 @@ RAPID_HDRS = \
 	third_party/rapidjson/msinttypes/inttypes.h third_party/rapidjson/msinttypes/stdint.h
 
 HDRS = \
-	platform.h errlist.h logger-passport.h logger-plume-collection.h list-file.h \
+	platform.h errlist.h logger-passport.h logger-plume-collection.h list-file.h utilfile.h \
 	third_party/argtable3/argtable3.h \
 	third_party/filewatch.hpp \
 	$(RAPID_HDRS)
@@ -32,7 +32,7 @@ bin_PROGRAMS = logger-passport-print
 
 LIBLOGGERPASSPORTSRC = \
 	logger-passport.cpp logger-plume-collection.cpp list-file.cpp \
-	errlist.cpp
+	utilfile.cpp errlist.cpp
 
 #
 #	Static library

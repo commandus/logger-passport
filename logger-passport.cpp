@@ -5,6 +5,7 @@
 #include "logger-passport.h"
 #include "logger-plume-collection.h"
 #include "filewatch.hpp"
+#include "utilfile.h"
 
 #define  MODULE_CODE    11
 
@@ -83,18 +84,19 @@ void *startPassportDirectory(
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
-    config->passportDirs.push_back(passportDir);
-    config->passports = new LoggerPlumeMemory();
-    config->onLog = onLog;
+    bool exists = (!passportDir.empty()) && util::fileExists(passportDir);
+    if (exists) {
+        config->passportDirs.push_back(passportDir);
+        config->passports = new LoggerPlumeMemory();
+        config->onLog = onLog;
 
-    if (!passportDir.empty()) {
         config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
         [config](const std::string &path, const filewatch::Event changeType) {
                 config->reload(path, changeType);
             }
         );
+        config->load();
     }
-    config->load();
     return config;
 }
 
@@ -109,18 +111,20 @@ void *startPassportDirectory(
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
-    config->passports = new LoggerPlumeMemory();
-    config->passportDirs = passportDirs;
-    config->onLog = onLog;
+    bool exists = (!passportDirs.empty()) && (!passportDirs[0].empty()) && util::fileExists(passportDirs[0]);
+    if (exists) {
+        config->passports = new LoggerPlumeMemory();
+        config->passportDirs = passportDirs;
+        config->onLog = onLog;
 
-    if (!passportDirs.empty()) {
         config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
-        [config](const std::string &path, const filewatch::Event changeType) {
+            [config](const std::string &path,
+                     const filewatch::Event changeType) {
                 config->reload(path, changeType);
             }
         );
+        config->load();
     }
-    config->load();
     return config;
 }
 
@@ -136,14 +140,17 @@ void stopPassportDirectory(
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
     if (!config)
         return;
+
     if (config->watcher) {
         delete config->watcher;
         config->watcher = nullptr;
     }
+
     if (config->passports) {
         delete config->passports;
         config->passports = nullptr;
     }
+
 }
 
 /**
