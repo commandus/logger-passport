@@ -134,6 +134,8 @@ void stopPassportDirectory(
 )
 {
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    if (!config)
+        return;
     if (config->watcher) {
         delete config->watcher;
         config->watcher = nullptr;
