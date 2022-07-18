@@ -75,12 +75,11 @@ void PassportServiceConfig::load() {
 
 /**
  * Load passports from the directory. Listen for changes in the directory
- * @param config return pointer to LoggerPlumeCollection if success
- * @return descriptor
  */
 void *startPassportDirectory(
     const std::string &passportDir, ///< passport files root
-    LOG_CALLBACK onLog              ///< log callback
+    LOG_CALLBACK onLog,              ///< log callback
+    bool enableMonitor
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
@@ -90,11 +89,14 @@ void *startPassportDirectory(
         config->passports = new LoggerPlumeMemory();
         config->onLog = onLog;
 
-        config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
-        [config](const std::string &path, const filewatch::Event changeType) {
-                config->reload(path, changeType);
-            }
-        );
+        if (enableMonitor) {
+            config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
+                [config](const std::string &path,
+                         const filewatch::Event changeType) {
+                    config->reload(path, changeType);
+                }
+            );
+        }
         config->load();
     }
     return config;
@@ -102,12 +104,11 @@ void *startPassportDirectory(
 
 /**
  * Load passports from the directories or files. Listen for changes in the directory
- * @param config return pointer to LoggerPlumeCollection if success
- * @return descriptor
  */
 void *startPassportDirectory(
     const std::vector<std::string> &passportDirs,   ///< passport files or directories list
-    LOG_CALLBACK onLog                              ///< log callback
+    LOG_CALLBACK onLog,                              ///< log callback
+    bool enableMonitor
 )
 {
     PassportServiceConfig *config = new PassportServiceConfig();
@@ -116,13 +117,14 @@ void *startPassportDirectory(
         config->passports = new LoggerPlumeMemory();
         config->passportDirs = passportDirs;
         config->onLog = onLog;
-
-        config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
-            [config](const std::string &path,
-                     const filewatch::Event changeType) {
-                config->reload(path, changeType);
-            }
-        );
+        if (enableMonitor) {
+            config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
+                [config](const std::string &path,
+                         const filewatch::Event changeType) {
+                    config->reload(path, changeType);
+                }
+            );
+        }
         config->load();
     }
     return config;
