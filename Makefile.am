@@ -1,14 +1,17 @@
 SUBDIRS = .
 ACLOCAL_AMFLAGS = -I m4
 
+#MACH_BITS=-m32
+MACH_BITS=
+AM_CFLAGS=$(MACH_BITS)
 #
 # https://ask-dev.ru/info/1247790/understanding-gcc-5s-glibcxxusecxx11abi-or-the-new-abi
 #-D_GLIBCXX_USE_CXX11_ABI=0
 # -I../,,/third_party for make dist little hack
 #
-COMMON_C_FLAGS = -Ithird_party -I../../third_party -DDEBUG_PRINT -O2
-AM_CXXFLAGS= -std=c++11 $(COMMON_C_FLAGS)
-AM_CPPFLAGS = $(COMMON_C_FLAGS)
+COMMON_C_FLAGS = -Ithird_party -I../../third_party -DDEBUG_PRINT -O2 $(MACH_BITS)
+AM_CXXFLAGS= $(COMMON_C_FLAGS) -std=c++11
+AM_CPPFLAGS = $(COMMON_C_FLAGS) -std=c++11
 
 RAPID_HDRS = \
 	third_party/rapidjson/allocators.h       third_party/rapidjson/encodings.h        third_party/rapidjson/fwd.h             third_party/rapidjson/memorystream.h    third_party/rapidjson/prettywriter.h   third_party/rapidjson/schema.h  \
@@ -40,7 +43,7 @@ LIBLOGGERPASSPORTSRC = \
 lib_LIBRARIES = liblogger-passport.a
 liblogger_passport_a_SOURCES = $(LIBLOGGERPASSPORTSRC)
 # $(HDRS)
-liblogger_passport_a_CXXFLAGS = -std=c++11 $(COMMON_C_FLAGS) -fPIC
+liblogger_passport_a_CXXFLAGS = $(COMMON_C_FLAGS) -fPIC
 
 L_LOGGER_PASSPORT = -L. -llogger-passport
 

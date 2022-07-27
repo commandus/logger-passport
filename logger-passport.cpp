@@ -4,7 +4,16 @@
 
 #include "logger-passport.h"
 #include "logger-plume-collection.h"
+#if __cplusplus >= 201103L
+#define ENABLE_WATCHER 1
+#else
+#undef ENABLE_WATCHER
+#endif
+
+#ifdef ENABLE_WATCHER
 #include "filewatch.hpp"
+#endif
+
 #include "utilfile.h"
 
 #define  MODULE_CODE    11
