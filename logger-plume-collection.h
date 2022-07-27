@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <mutex>
+#include <inttypes.h>
 
 /**
  * @brief Each sensor have 8 bytes long MAC address
