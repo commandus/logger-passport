@@ -5,7 +5,7 @@
 #include "logger-passport.h"
 #include "logger-plume-collection.h"
 #if __cplusplus >= 201103L
-#define ENABLE_WATCHER 1
+// #define ENABLE_WATCHER 1
 #else
 #undef ENABLE_WATCHER
 #endif
@@ -22,8 +22,10 @@ class PassportServiceConfig {
 public:
     // service descriptor
     LoggerPlumeCollection *passports;
+#ifdef ENABLE_WATCHER
     // watcher
     filewatch::FileWatch<std::string> *watcher;
+#endif
     // log callback
     LOG_CALLBACK onLog;
     // passport files root
@@ -31,14 +33,18 @@ public:
 
     PassportServiceConfig();
     virtual ~PassportServiceConfig();
-
+#ifdef ENABLE_WATCHER
     void reload(const std::string &fileName, const filewatch::Event changeType);
-
+#endif
     void load();
 };
 
 PassportServiceConfig::PassportServiceConfig()
-    : passports(nullptr), watcher(nullptr), onLog(nullptr)
+    : passports(nullptr),
+#ifdef ENABLE_WATCHER
+    watcher(nullptr),
+#endif
+    onLog(nullptr)
 {
 
 }
@@ -47,6 +53,7 @@ PassportServiceConfig::~PassportServiceConfig()
 {
 }
 
+#ifdef ENABLE_WATCHER
 void PassportServiceConfig::reload(
     const std::string &fileName,
     const filewatch::Event changeType
@@ -74,6 +81,7 @@ void PassportServiceConfig::reload(
         onLog(this, 3, MODULE_CODE, 0, "File " + fileName + " " + t);
     }
 }
+#endif
 
 void PassportServiceConfig::load() {
     this->passports->startModification();
@@ -97,7 +105,7 @@ void *startPassportDirectory(
         config->passportDirs.push_back(passportDir);
         config->passports = new LoggerPlumeMemory();
         config->onLog = onLog;
-
+#ifdef ENABLE_WATCHER
         if (enableMonitor) {
             config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
                 [config](const std::string &path,
@@ -106,6 +114,7 @@ void *startPassportDirectory(
                 }
             );
         }
+#endif
         config->load();
     }
     return config;
@@ -126,6 +135,7 @@ void *startPassportDirectory(
         config->passports = new LoggerPlumeMemory();
         config->passportDirs = passportDirs;
         config->onLog = onLog;
+#ifdef ENABLE_WATCHER
         if (enableMonitor) {
             config->watcher = new filewatch::FileWatch<std::string>(config->passportDirs[0],
                 [config](const std::string &path,
@@ -134,6 +144,7 @@ void *startPassportDirectory(
                 }
             );
         }
+#endif
         config->load();
     }
     return config;
@@ -151,12 +162,12 @@ void stopPassportDirectory(
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
     if (!config)
         return;
-
+#ifdef ENABLE_WATCHER
     if (config->watcher) {
         delete config->watcher;
         config->watcher = nullptr;
     }
-
+#endif
     if (config->passports) {
         delete config->passports;
         config->passports = nullptr;
