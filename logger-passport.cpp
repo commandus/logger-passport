@@ -1,6 +1,4 @@
-/**
- *
- */
+#include <iostream>
 
 #include "logger-passport.h"
 #include "logger-plume-collection.h"
@@ -196,6 +194,9 @@ bool hasPassport(
     if (!descriptor)
         return false;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    std::cerr << "config->passports " << config->passports << std::endl;
+    if (!config->passports)
+        return false;
     const LoggerPlume *p = config->passports->get(serialNo, year);
     if (p && retVal) {
         switch(retType) {
@@ -312,6 +313,8 @@ double calcTemperature(
     if (!descriptor)
         return value;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    if (!config->passports)
+        return value;
     return config->passports->calc(serialNo, year, sensor, value);
 }
 
@@ -331,5 +334,7 @@ double calcTemperature(
     if (!descriptor)
         return value;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
+    if (!config->passports)
+        return value;
     return config->passports->calc(mac, value);
 }
