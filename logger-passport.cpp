@@ -12,7 +12,8 @@
 
 #include "utilfile.h"
 
-#define  MODULE_CODE    11
+// @see lorawan-network-server project, errlist.h
+#define LOG_TEMPERATURE_LOGGER_PASSPORT 8
 
 class PassportServiceConfig {
 public:
@@ -74,7 +75,7 @@ void PassportServiceConfig::reload(
                 t = "renamed (new name)";
                 break;
         }
-        onLog(this, 3, MODULE_CODE, 0, "File " + fileName + " " + t);
+        onLog(this, 3, LOG_TEMPERATURE_LOGGER_PASSPORT, 0, "File " + fileName + " " + t);
     }
 }
 #endif
