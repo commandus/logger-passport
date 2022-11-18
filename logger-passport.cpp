@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "logger-passport.h"
 #include "logger-plume-collection.h"
 #if __cplusplus >= 201103L
@@ -194,7 +192,6 @@ bool hasPassport(
     if (!descriptor)
         return false;
     PassportServiceConfig *config = (PassportServiceConfig *) descriptor;
-    std::cerr << "config->passports " << config->passports << std::endl;
     if (!config->passports)
         return false;
     const LoggerPlume *p = config->passports->get(serialNo, year);
