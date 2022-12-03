@@ -629,7 +629,7 @@ int LoggerPlumeCollection::parseJson(
     if (!doc.IsArray())
         return ERR_LOGGER_PASSPORT_INVALID_JSON;
 
-    for (int i = 0; i < doc.Size(); i++) {
+    for (rapidjson::SizeType i = 0; i < doc.Size(); i++) {
         LoggerPlume item;
         rapidjson::Value &jPlume = doc[i];
         if (!jPlume.IsObject())
@@ -663,7 +663,7 @@ int LoggerPlumeCollection::parseJson(
         if (jPlume.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS])) {
             rapidjson::Value &jSensors = jPlume[JSON_PASSPORT_NAMES[JSON_SENSORS]];
             if (jSensors.IsArray()) {
-                for (int s = 0; s < jSensors.Size(); s++) {
+                for (rapidjson::SizeType s = 0; s < jSensors.Size(); s++) {
                     rapidjson::Value &jSensor = jSensors[s];
                     SensorCoefficients sensor;
                     if (jSensor.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS_MAC])) {
@@ -675,12 +675,12 @@ int LoggerPlumeCollection::parseJson(
                     if (jSensor.HasMember(JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS])) {
                         rapidjson::Value &jSensorCoefficients = jSensor[JSON_PASSPORT_NAMES[JSON_SENSORS_COEFFICIENTS]];
                         if (jSensorCoefficients.IsArray()) {
-                            for (int c = 0; c < jSensorCoefficients.Size(); c++) {
+                            for (rapidjson::SizeType c = 0; c < jSensorCoefficients.Size(); c++) {
                                 std::vector <double> a;
                                 sensor.coefficients.push_back(a);
                                 rapidjson::Value &jCoefficient1 = jSensorCoefficients[c];
                                 if (jCoefficient1.IsArray()) {
-                                    for (int c1 = 0; c1 < jCoefficient1.Size(); c1++) {
+                                    for (rapidjson::SizeType c1 = 0; c1 < jCoefficient1.Size(); c1++) {
                                         rapidjson::Value &jCoefficient2 = jCoefficient1[c1];
                                         if (jCoefficient2.IsDouble()) {
                                             sensor.coefficients.back().push_back(jCoefficient2.GetDouble());

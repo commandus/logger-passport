@@ -7,6 +7,8 @@
 #include <windows.h>
 #include <wchar.h>
 #include <stdio.h>
+#include <io.h>
+#define F_OK            0
 #define PATH_DELIMITER "\\"
 #else
 #include <sys/param.h>
@@ -48,7 +50,6 @@
 
 bool util::fileExists(const std::string &fileName)
 {
-    struct stat r;
     return _access(fileName.c_str(), F_OK) != -1;
 }
 
