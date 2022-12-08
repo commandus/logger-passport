@@ -3,14 +3,6 @@
 
 #include <endian.h>
 
-#ifdef _MSC_VER
-#define ALIGN	__declspec(align(1))
-#define PACKED	
-#else
-#define ALIGN	
-#define PACKED	__attribute__((aligned(1), packed))
-#endif
-
 #ifdef __MACH__
 #include <libkern/OSByteOrder.h>
 #define htobe16(x) OSSwapHostToBigInt16(x)
