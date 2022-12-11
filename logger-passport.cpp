@@ -247,6 +247,8 @@ size_t countPassports(
             case FORMAT_PASSPORT_TABLE:
                 retVal->push_back(p->toTableString());
                 break;
+            case FORMAT_PASSPORT_NONE:
+                break;
         }
     }
     return r;
